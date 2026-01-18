@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Methodology - IL9Cast{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Methodology</h1>
+    <p class="page-subtitle">How we build the forecast model</p>
+</div>
+
+<section class="methodology-content">
+    <article class="method-section">
+        <h2>How We Forecast</h2>
+        <p>IL9Cast combines multiple data streams to estimate each candidate's probability of winning the Illinois 9th Democratic primary. Our model weighs polling data, fundraising trends, historical performance, and voter demographics to produce real-time odds.</p>
+        <p>Unlike static predictions, our forecast updates as new information becomes available, allowing you to see how the race evolves in real time.</p>
+    </article>
+
+    <article class="method-section">
+        <h2>Data Sources</h2>
+        <p>Our model integrates data from multiple sources:</p>
+        <ul class="method-list">
+            <li><strong>Public Polling:</strong> We aggregate publicly available polls from major pollsters tracking the IL-9 race.</li>
+            <li><strong>Fundraising Data:</strong> FEC filings and campaign finance reports inform candidate momentum and resources.</li>
+            <li><strong>Demographic Analysis:</strong> Census data and voter registration statistics by precinct.</li>
+            <li><strong>Historical Results:</strong> Previous primary and general election outcomes in the district.</li>
+            <li><strong>Endorsements & News:</strong> Major endorsements and media coverage weighted by source credibility.</li>
+            <li><strong>Social & Digital Signals:</strong> Campaign engagement metrics and digital presence strength.</li>
+        </ul>
+    </article>
+
+    <article class="method-section">
+        <h2>Model Details</h2>
+        <p>We employ a Bayesian ensemble approach that combines multiple forecasting techniques:</p>
+        <ul class="method-list">
+            <li><strong>Polling Average:</strong> A weighted average of recent polls, with more recent polls weighted more heavily.</li>
+            <li><strong>Fundamentals Model:</strong> Fundraising, incumbency, experience, and demographic fit are modeled separately.</li>
+            <li><strong>Historical Regression:</strong> Past election data helps calibrate expectations for new candidates.</li>
+            <li><strong>Ensemble Weighting:</strong> Individual model outputs are combined based on historical accuracy.</li>
+        </ul>
+        <p>Our model produces a probability distribution for each candidate, not just a point estimate. This allows us to quantify uncertainty and show how competitive or decisive the race is.</p>
+    </article>
+
+    <article class="method-section">
+        <h2>Update Frequency</h2>
+        <p>IL9Cast updates in real time as new data becomes available. When new polls are released, fundraising reports are filed, or significant campaign events occur, we incorporate that information into the model within hours.</p>
+        <p>You can see the exact time of the last update at the top of the <a href="/odds">Odds page</a>.</p>
+    </article>
+
+    <article class="method-section">
+        <h2>Confidence & Limitations</h2>
+        <p>While we aim for accuracy, forecasts always carry uncertainty. Here are some important caveats:</p>
+        <ul class="method-list">
+            <li><strong>Polling Error:</strong> Polls can miss, especially in low-turnout primaries. Historically, primary polls have a ~4-5% average error.</li>
+            <li><strong>Late Movements:</strong> Campaigns can shift dramatically in the final weeks. Early forecasts are less reliable.</li>
+            <li><strong>Turnout Uncertainty:</strong> Primary turnout is harder to predict than general election turnout, introducing additional variance.</li>
+            <li><strong>New Entrants:</strong> If new candidates enter the race late, our model may need recalibration.</li>
+            <li><strong>Data Quality:</strong> Our results are only as good as the underlying data. Some data sources may be incomplete or biased.</li>
+        </ul>
+        <p><strong>Bottom line:</strong> Use this forecast as one input among many, not as definitive prediction. The race will ultimately be decided by voters on March 17, 2026.</p>
+    </article>
+
+    <article class="method-section contact-section">
+        <h2>Questions?</h2>
+        <p>IL9Cast is maintained by <strong>Ryan</strong> as an educational project to help voters understand the race dynamics in Illinois's 9th Congressional District.</p>
+        <p>For questions about the methodology or to report issues, please reach out directly.</p>
+    </article>
+</section>
+
+<style scoped>
+.methodology-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.method-section {
+    margin-bottom: 3rem;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.method-section:last-child {
+    border-bottom: none;
+}
+
+.method-section h2 {
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.method-section p {
+    margin-bottom: 1rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+}
+
+.method-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 1rem 0;
+}
+
+.method-list li {
+    margin-bottom: 0.8rem;
+    padding-left: 1.5rem;
+    position: relative;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.method-list li:before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--accent-primary);
+}
+
+.contact-section {
+    background: var(--bg-card);
+    padding: 2rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.method-section a {
+    color: var(--accent-primary);
+    text-decoration: none;
+    border-bottom: 1px solid var(--accent-primary);
+}
+
+.method-section a:hover {
+    opacity: 0.8;
+}
+</style>
+{% endblock %}

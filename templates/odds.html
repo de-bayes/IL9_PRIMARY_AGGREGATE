@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Odds - IL9Cast{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Current Odds</h1>
+    <p class="page-subtitle">Live forecast for all candidates</p>
+</div>
+
+<section class="odds-controls">
+    <div class="sort-controls">
+        <label for="sortBy">Sort by:</label>
+        <select id="sortBy" class="sort-select">
+            <option value="odds-desc">Odds (High to Low)</option>
+            <option value="odds-asc">Odds (Low to High)</option>
+            <option value="name">Name (A-Z)</option>
+            <option value="change">Recent Change</option>
+        </select>
+    </div>
+    <div class="update-time">
+        Last updated: <span id="updateTimestamp">Loading...</span>
+    </div>
+</section>
+
+<section class="odds-table-container">
+    <table class="odds-table" id="oddsTable">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Candidate</th>
+                <th>Role</th>
+                <th>Current Odds</th>
+                <th>Change</th>
+                <th>Trend</th>
+            </tr>
+        </thead>
+        <tbody id="oddsTbody">
+            <tr>
+                <td colspan="6" class="table-loading">Loading candidates...</td>
+            </tr>
+        </tbody>
+    </table>
+</section>
+
+<section class="visualizations">
+    <div class="viz-container">
+        <h2>Probability Distribution</h2>
+        <div class="chart-wrapper">
+            <canvas id="distributionChart"></canvas>
+        </div>
+    </div>
+
+    <div class="viz-container">
+        <h2>Historical Trend (90 Days)</h2>
+        <div class="chart-wrapper">
+            <canvas id="trendChart"></canvas>
+        </div>
+    </div>
+</section>
+
+<script>
+let distributionChart = null;
+let trendChart = null;
+
+async function loadOdds() {
+    try {
+        const response = await fetch('/api/forecast');
+        const data = await response.json();
+
+        // Update timestamp
+        const updated = new Date(data.last_updated);
+        document.getElementById('updateTimestamp').textContent = updated.toLocaleString();
+
+        // Store data for sorting
+        window.candidatesData = data.candidates;
+
+        // Initial render
+        renderTable(data.candidates);
+
+        // Load trend data
+        await loadTrendData();
+    } catch (error) {
+        console.error('Error loading odds:', error);
+        document.getElementById('oddsTbody').innerHTML = '<tr><td colspan="6" class="table-error">Error loading data</td></tr>';
+    }
+}
+
+function renderTable(candidates) {
+    const tbody = document.getElementById('oddsTbody');
+    tbody.innerHTML = '';
+
+    // Sort candidates
+    const sortBy = document.getElementById('sortBy').value;
+    const sorted = sortCandidates(candidates, sortBy);
+
+    sorted.forEach((candidate, index) => {
+        const row = document.createElement('tr');
+        const changeNum = candidate.change || 0;
+        const changeClass = changeNum > 0 ? 'positive' : changeNum < 0 ? 'negative' : 'neutral';
+        const changePlus = changeNum > 0 ? '+' : '';
+
+        const trendEmoji = {
+            'up': '📈',
+            'down': '📉',
+            'stable': '→'
+        }[candidate.trend] || '→';
+
+        row.innerHTML = `
+            <td class="rank">#${index + 1}</td>
+            <td class="candidate-name">${candidate.name}</td>
+            <td class="candidate-role">${candidate.party_role}</td>
+            <td class="probability">
+                <div class="prob-bar">
+                    <div class="prob-fill" style="width: ${candidate.probability}%"></div>
+                </div>
+                <span class="prob-text">${candidate.probability}%</span>
+            </td>
+            <td class="change ${changeClass}">${changePlus}${changeNum}%</td>
+            <td class="trend">${trendEmoji}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function sortCandidates(candidates, sortBy) {
+    const copy = [...candidates];
+    switch (sortBy) {
+        case 'odds-asc':
+            return copy.sort((a, b) => a.probability - b.probability);
+        case 'name':
+            return copy.sort((a, b) => a.name.localeCompare(b.name));
+        case 'change':
+            return copy.sort((a, b) => (b.change || 0) - (a.change || 0));
+        default: // odds-desc
+            return copy.sort((a, b) => b.probability - a.probability);
+    }
+}
+
+async function loadTrendData() {
+    try {
+        const response = await fetch('/api/timeline');
+        const timeline = await response.json();
+
+        renderDistributionChart(window.candidatesData);
+        renderTrendChart(timeline);
+    } catch (error) {
+        console.error('Error loading trend data:', error);
+    }
+}
+
+function renderDistributionChart(candidates) {
+    const sorted = [...candidates].sort((a, b) => b.probability - a.probability);
+    const labels = sorted.map(c => c.name.split(' ')[0]);
+    const data = sorted.map(c => c.probability);
+    const colors = sorted.map(c => c.color);
+
+    const ctx = document.getElementById('distributionChart').getContext('2d');
+    if (distributionChart) distributionChart.destroy();
+
+    distributionChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Win Probability (%)',
+                data: data,
+                backgroundColor: colors,
+                borderColor: colors,
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            indexAxis: 'x',
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 35,
+                    ticks: {
+                        callback: (value) => value + '%'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderTrendChart(timeline) {
+    const labels = timeline.map(d => new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    const candidateNames = Object.keys(timeline[0].candidates);
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+
+    const datasets = candidateNames.map((name, idx) => {
+        const data = timeline.map(d => d.candidates[name]);
+        return {
+            label: name.split(' ')[0],
+            data: data,
+            borderColor: colors[idx],
+            backgroundColor: colors[idx] + '20',
+            tension: 0.3,
+            fill: false,
+            pointRadius: 3,
+            pointBackgroundColor: colors[idx]
+        };
+    });
+
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    if (trendChart) trendChart.destroy();
+
+    trendChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { usePointStyle: true, padding: 15 }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 35,
+                    ticks: { callback: (value) => value + '%' }
+                }
+            }
+        }
+    });
+}
+
+// Sort handler
+document.getElementById('sortBy').addEventListener('change', () => {
+    renderTable(window.candidatesData);
+});
+
+document.addEventListener('DOMContentLoaded', loadOdds);
+</script>
+{% endblock %}
