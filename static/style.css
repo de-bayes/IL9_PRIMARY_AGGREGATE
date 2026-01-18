@@ -25,11 +25,11 @@
 }
 
 html[data-theme="light"] {
-    --bg-primary: #DDD4C4;
+    --bg-primary: #C4B5A0;
     --bg-card: #FFFFFF;
     --text-primary: #1A1A1A;
     --text-secondary: #666666;
-    --border-color: #D4C9B9;
+    --border-color: #B5A68F;
     --accent-primary: #000000;
     --accent-light: #F5F5F5;
 }
@@ -91,6 +91,7 @@ a {
     font-family: var(--font-sans);
     font-size: 1.6rem;
     font-weight: 800;
+    font-style: italic;
     letter-spacing: 0.15em;
     white-space: nowrap;
     color: var(--accent-primary);
@@ -102,6 +103,7 @@ a {
     letter-spacing: 0.03em;
     text-transform: uppercase;
     font-weight: 500;
+    font-style: italic;
 }
 
 .nav-right {
@@ -204,11 +206,13 @@ a {
     line-height: 1.8;
 }
 
-.hero-ctas {
+.hero-ctas,
+.hero-buttons {
     display: flex;
     gap: var(--spacing-md);
     justify-content: center;
     flex-wrap: wrap;
+    margin-top: var(--spacing-lg);
 }
 
 /* ==================== Buttons ==================== */
