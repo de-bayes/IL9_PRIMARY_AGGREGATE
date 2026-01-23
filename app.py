@@ -1,8 +1,14 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 import random
 from datetime import datetime, timedelta
+import requests
+import json
+import os
 
 app = Flask(__name__)
+
+# Path to historical data storage
+HISTORICAL_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'historical_snapshots.json')
 
 # Mock candidate data
 CANDIDATES = [
@@ -26,6 +32,18 @@ def odds():
 @app.route('/methodology')
 def methodology():
     return render_template('methodology.html')
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+@app.route('/markets')
+def markets():
+    return render_template('markets.html')
+
+@app.route('/fundraising')
+def fundraising():
+    return render_template('fundraising.html')
 
 # API Endpoints
 @app.route('/api/forecast')
@@ -76,5 +94,112 @@ def get_timeline():
 
     return jsonify(timeline)
 
+@app.route('/api/manifold')
+def get_manifold():
+    """Proxy Manifold Markets API to avoid CORS"""
+    try:
+        response = requests.get('https://api.manifold.markets/v0/slug/who-will-win-the-democratic-primary-RZdcps6dL9')
+        response.raise_for_status()
+        result = jsonify(response.json())
+        result.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        result.headers['Pragma'] = 'no-cache'
+        result.headers['Expires'] = '0'
+        return result
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/kalshi')
+def get_kalshi():
+    """Proxy Kalshi API to avoid CORS"""
+    try:
+        response = requests.get('https://api.elections.kalshi.com/trade-api/v2/markets?series_ticker=KXIL9D&status=open')
+        response.raise_for_status()
+        result = jsonify(response.json())
+        result.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        result.headers['Pragma'] = 'no-cache'
+        result.headers['Expires'] = '0'
+        return result
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/manifold/history')
+def get_manifold_history():
+    """Get Manifold market history for chart"""
+    try:
+        # Get the market first to get the ID
+        market_response = requests.get('https://api.manifold.markets/v0/slug/who-will-win-the-democratic-primary-RZdcps6dL9')
+        market_response.raise_for_status()
+        market = market_response.json()
+        market_id = market.get('id')
+
+        # Get bets for this market
+        bets_response = requests.get(f'https://api.manifold.markets/v0/bets?contractId={market_id}&limit=1000')
+        bets_response.raise_for_status()
+        bets = bets_response.json()
+
+        return jsonify({
+            "market": market,
+            "bets": bets
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/kalshi/history/<ticker>')
+def get_kalshi_history(ticker):
+    """Get Kalshi market history for a specific ticker"""
+    try:
+        response = requests.get(f'https://api.elections.kalshi.com/trade-api/v2/markets/{ticker}/history?limit=1000')
+        response.raise_for_status()
+        return jsonify(response.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/snapshot', methods=['POST'])
+def save_snapshot():
+    """Save a historical snapshot of aggregated probabilities"""
+    try:
+        # Ensure data directory exists
+        os.makedirs(os.path.dirname(HISTORICAL_DATA_PATH), exist_ok=True)
+
+        # Load existing snapshots
+        if os.path.exists(HISTORICAL_DATA_PATH):
+            with open(HISTORICAL_DATA_PATH, 'r') as f:
+                snapshots = json.load(f)
+        else:
+            snapshots = []
+
+        # Get new snapshot from request
+        new_snapshot = request.json
+        new_snapshot['timestamp'] = datetime.now().isoformat()
+
+        # Append new snapshot
+        snapshots.append(new_snapshot)
+
+        # Save back to file
+        with open(HISTORICAL_DATA_PATH, 'w') as f:
+            json.dump(snapshots, f, indent=2)
+
+        return jsonify({"success": True, "total_snapshots": len(snapshots)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/snapshots')
+def get_snapshots():
+    """Retrieve historical snapshots for charting"""
+    try:
+        if not os.path.exists(HISTORICAL_DATA_PATH):
+            return jsonify([])
+
+        with open(HISTORICAL_DATA_PATH, 'r') as f:
+            snapshots = json.load(f)
+
+        return jsonify(snapshots)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, port=8000)
+    # Use debug mode only for local development
+    import os
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    port = int(os.environ.get('PORT', 8000))
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
