@@ -897,9 +897,10 @@ function aggregateSnapshots(snapshots, period) {
 
     snapshots.forEach(snapshot => {
         const date = new Date(snapshot.timestamp);
-        // Round down to the hour - keep in original timezone
+        // Round down to the hour - keep in local timezone (don't convert to UTC)
         date.setMinutes(0, 0, 0);
-        const hourKey = date.toISOString();
+        // Use local time string as key to avoid UTC conversion
+        const hourKey = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}T${String(date.getHours()).padStart(2,'0')}:00:00`;
 
         if (!hourlyBuckets[hourKey]) {
             hourlyBuckets[hourKey] = [];
