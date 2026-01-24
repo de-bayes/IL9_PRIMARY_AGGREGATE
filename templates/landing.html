@@ -32,36 +32,7 @@
             <p>Your real-time forecasting model for the IL-9 2026 primary, inspired by Nate Silver, 538, the Silver Bulletin, and Galen Druke.</p>
         </div>
         <div class="landing-menu">
-            <button class="menu-toggle" id="menuToggle">Explore</button>
-            <div class="menu-expanded" id="menuExpanded">
-                <div class="menu-group">
-                    <div class="menu-group-label">
-                        <span class="live-badge"></span>
-                        Live
-                    </div>
-                    <a href="/markets" class="menu-bar menu-bar-primary" style="--delay: 0">
-                        <span class="bar-text">Markets</span>
-                        <span class="menu-callout">LIVE DATA</span>
-                    </a>
-                    <a href="/fundraising" class="menu-bar" style="--delay: 1">
-                        <span class="bar-text">Fundraising</span>
-                    </a>
-                </div>
-                <div class="menu-group">
-                    <div class="menu-group-label">In Development</div>
-                    <a href="/odds" class="menu-bar" style="--delay: 2">
-                        <span class="bar-text">The Model</span>
-                    </a>
-                </div>
-                <div class="menu-group">
-                    <a href="/methodology" class="menu-bar" style="--delay: 3">
-                        <span class="bar-text">Methodology</span>
-                    </a>
-                    <a href="/about" class="menu-bar" style="--delay: 4">
-                        <span class="bar-text">About</span>
-                    </a>
-                </div>
-            </div>
+            <a href="/markets" class="menu-toggle-link">Explore Markets</a>
         </div>
     </div>
 
@@ -104,20 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         container.appendChild(col);
     }
 
-    // Menu toggle
-    const menuToggle = document.getElementById('menuToggle');
-    const menuExpanded = document.getElementById('menuExpanded');
-
-    menuToggle.addEventListener('click', () => {
-        menuExpanded.classList.toggle('open');
-    });
-
-    // Close menu when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!menuToggle.contains(e.target) && !menuExpanded.contains(e.target)) {
-            menuExpanded.classList.remove('open');
-        }
-    });
+    // No menu toggle needed - Explore button goes directly to Markets
 });
 </script>
 {% endblock %}
