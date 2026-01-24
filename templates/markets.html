@@ -991,7 +991,13 @@ async function renderMarketTrendChart(candidates) {
 
     // Build labels from aggregated snapshot timestamps
     const labels = aggregatedSnapshots.map((s, index) => {
-        const date = new Date(s.timestamp);
+        // Parse timestamp as local time (not UTC)
+        // Format: "2026-01-24T08:00:00" - split and create date with local components
+        const ts = s.timestamp;
+        const [datePart, timePart] = ts.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hour, min, sec] = (timePart || '00:00:00').split(':').map(n => parseInt(n));
+        const date = new Date(year, month - 1, day, hour, min, sec || 0);
 
         if (period === '1h') {
             return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
