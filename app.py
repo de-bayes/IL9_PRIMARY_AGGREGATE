@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 import requests
 import json
 import os
+import atexit
+from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 
@@ -196,6 +198,170 @@ def get_snapshots():
         return jsonify(snapshots)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# Background task to automatically collect and save data
+def collect_market_data():
+    """Fetch market data and save snapshot automatically"""
+    try:
+        print(f"[{datetime.now().isoformat()}] Running automatic data collection...")
+
+        # Fetch Manifold data
+        manifold_data = {}
+        try:
+            manifold_response = requests.get('https://api.manifold.markets/v0/slug/who-will-win-the-democratic-primary-RZdcps6dL9', timeout=10)
+            manifold_response.raise_for_status()
+            manifold_market = manifold_response.json()
+
+            answers = manifold_market.get('answers', [])
+            for answer in answers:
+                if answer.get('text') != 'Other' and 'schakowsky' not in answer.get('text', '').lower():
+                    name = normalize_candidate_name(answer.get('text', ''))
+                    manifold_data[name] = {
+                        'probability': round(answer.get('probability', 0) * 100, 1),
+                        'displayName': answer.get('text', '')
+                    }
+        except Exception as e:
+            print(f"Error fetching Manifold data: {e}")
+
+        # Fetch Kalshi data
+        kalshi_data = {}
+        try:
+            kalshi_response = requests.get('https://api.elections.kalshi.com/trade-api/v2/markets?series_ticker=KXIL9D&status=open', timeout=10)
+            kalshi_response.raise_for_status()
+            kalshi_markets = kalshi_response.json().get('markets', [])
+
+            for market in kalshi_markets:
+                display_name = market.get('subtitle') or market.get('title', '')
+                if 'schakowsky' not in display_name.lower():
+                    name = normalize_candidate_name(display_name)
+                    last_price = market.get('last_price', 0)
+                    yes_bid = market.get('yes_bid', 0)
+                    yes_ask = market.get('yes_ask', 0)
+                    midpoint = (yes_bid + yes_ask) / 2
+
+                    # Calculate liquidity-weighted price
+                    spread = yes_ask - yes_bid
+                    liquidity_price = midpoint
+
+                    if spread > 0 and last_price > 0:
+                        position_in_spread = max(0, min(1, (last_price - yes_bid) / spread))
+                        offset_from_mid = position_in_spread - 0.5
+                        spread_factor = max(0.2, 1 - (spread / 10) * 0.8)
+                        price_shift = max(-3, min(3, offset_from_mid * 6 * spread_factor))
+                        liquidity_price = max(0, min(100, midpoint + price_shift))
+
+                    kalshi_data[name] = {
+                        'last_price': last_price,
+                        'midpoint': midpoint,
+                        'liquidity': liquidity_price,
+                        'displayName': display_name
+                    }
+        except Exception as e:
+            print(f"Error fetching Kalshi data: {e}")
+
+        # Calculate aggregated probabilities
+        if manifold_data or kalshi_data:
+            all_candidates = set(list(manifold_data.keys()) + list(kalshi_data.keys()))
+            aggregated = []
+
+            for candidate_key in all_candidates:
+                manifold_prob = manifold_data.get(candidate_key, {}).get('probability', 0)
+                kalshi_info = kalshi_data.get(candidate_key, {})
+                kalshi_last = kalshi_info.get('last_price', 0)
+                kalshi_mid = kalshi_info.get('midpoint', 0)
+                kalshi_liq = kalshi_info.get('liquidity', kalshi_mid)
+
+                has_kalshi = kalshi_last > 0 or kalshi_mid > 0
+
+                if has_kalshi:
+                    aggregate = (0.40 * manifold_prob) + (0.42 * kalshi_last) + (0.12 * kalshi_mid) + (0.06 * kalshi_liq)
+                else:
+                    aggregate = manifold_prob
+
+                if aggregate > 0 or manifold_prob > 0:
+                    display_name = manifold_data.get(candidate_key, {}).get('displayName') or kalshi_info.get('displayName', candidate_key)
+                    clean_name = clean_candidate_name(display_name)
+
+                    aggregated.append({
+                        'name': clean_name,
+                        'probability': aggregate,
+                        'hasKalshi': has_kalshi
+                    })
+
+            # Soft normalization (30% strength)
+            total = sum(c['probability'] for c in aggregated)
+            if total > 0:
+                for c in aggregated:
+                    fully_normalized = (c['probability'] / total) * 100
+                    adjustment = fully_normalized - c['probability']
+                    c['probability'] = c['probability'] + (adjustment * 0.30)
+
+            aggregated.sort(key=lambda x: x['probability'], reverse=True)
+
+            # Save snapshot
+            snapshot = {
+                'candidates': [{
+                    'name': c['name'],
+                    'probability': round(c['probability'], 1),
+                    'hasKalshi': c['hasKalshi']
+                } for c in aggregated],
+                'timestamp': datetime.now().isoformat()
+            }
+
+            # Ensure data directory exists
+            os.makedirs(os.path.dirname(HISTORICAL_DATA_PATH), exist_ok=True)
+
+            # Load existing snapshots
+            snapshots = []
+            if os.path.exists(HISTORICAL_DATA_PATH):
+                with open(HISTORICAL_DATA_PATH, 'r') as f:
+                    snapshots = json.load(f)
+
+            # Append new snapshot
+            snapshots.append(snapshot)
+
+            # Save back to file
+            with open(HISTORICAL_DATA_PATH, 'w') as f:
+                json.dump(snapshots, f, indent=2)
+
+            print(f"[{datetime.now().isoformat()}] Snapshot saved successfully. Total snapshots: {len(snapshots)}")
+        else:
+            print(f"[{datetime.now().isoformat()}] No data collected from either API")
+
+    except Exception as e:
+        print(f"[{datetime.now().isoformat()}] Error in automatic data collection: {e}")
+
+def normalize_candidate_name(name):
+    """Normalize candidate name for matching across platforms"""
+    cleaned = name.lower()
+    cleaned = cleaned.replace('wil ', '').replace('will ', '')
+    cleaned = cleaned.replace(' be the democratic nominee', '')
+    cleaned = cleaned.replace(' win', '').replace('?', '')
+    cleaned = cleaned.replace('dr. ', '').strip()
+
+    # Handle name variations
+    name_variations = {
+        'kat abughazaleh': 'kat abugazaleh',
+    }
+    if cleaned in name_variations:
+        cleaned = name_variations[cleaned]
+
+    return cleaned
+
+def clean_candidate_name(name):
+    """Clean up candidate name for display"""
+    return name.replace('wil ', '').replace('will ', '').replace(' be the democratic nominee', '').replace('?', '').strip()
+
+# Set up background scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=collect_market_data, trigger="interval", minutes=3)
+scheduler.start()
+
+# Run initial data collection on startup
+collect_market_data()
+
+# Shut down the scheduler when exiting the app
+atexit.register(lambda: scheduler.shutdown())
 
 if __name__ == '__main__':
     # Use debug mode only for local development

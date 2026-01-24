@@ -973,6 +973,14 @@ async function renderMarketTrendChart(candidates) {
     if (period === '1h') {
         const oneHourAgo = new Date(now - 60 * 60 * 1000);
         filteredSnapshots = snapshots.filter(s => new Date(s.timestamp) > oneHourAgo);
+
+        // If we don't have enough data in the last hour (due to deployment gaps),
+        // show the most recent data points to ensure the chart displays something
+        const MIN_DATA_POINTS = 10;
+        if (filteredSnapshots.length < MIN_DATA_POINTS && snapshots.length >= MIN_DATA_POINTS) {
+            // Take the last N data points regardless of time range
+            filteredSnapshots = snapshots.slice(-MIN_DATA_POINTS);
+        }
     }
 
     // Aggregate to reduce data points (hourly for 30d, raw for 1h)
