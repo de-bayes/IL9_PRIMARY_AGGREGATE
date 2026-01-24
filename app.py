@@ -10,7 +10,32 @@ from apscheduler.schedulers.background import BackgroundScheduler
 app = Flask(__name__)
 
 # Path to historical data storage
+# On Railway, this will be in the persistent volume at /app/data
 HISTORICAL_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'historical_snapshots.json')
+
+# Seed data path - git-tracked backup that Railway will use to initialize the volume
+SEED_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'seed_snapshots.json')
+
+def initialize_data():
+    """
+    Initialize the data directory and seed from backup if needed.
+    On Railway: copies seed data to persistent volume on first deploy.
+    """
+    data_dir = os.path.dirname(HISTORICAL_DATA_PATH)
+    os.makedirs(data_dir, exist_ok=True)
+
+    # If historical data doesn't exist but seed data does, copy it over
+    # This handles Railway's first deploy - the volume is empty but we have seed data from local collection
+    if not os.path.exists(HISTORICAL_DATA_PATH) and os.path.exists(SEED_DATA_PATH):
+        print(f"[{datetime.now().isoformat()}] Seeding data from {SEED_DATA_PATH}")
+        with open(SEED_DATA_PATH, 'r') as src:
+            seed_data = json.load(src)
+        with open(HISTORICAL_DATA_PATH, 'w') as dst:
+            json.dump(seed_data, dst, indent=2)
+        print(f"[{datetime.now().isoformat()}] Seeded {len(seed_data)} snapshots")
+
+# Initialize data on module load
+initialize_data()
 
 # Mock candidate data
 CANDIDATES = [
@@ -333,13 +358,20 @@ def collect_market_data():
 
 def normalize_candidate_name(name):
     """Normalize candidate name for matching across platforms"""
+    import re
     cleaned = name.lower()
-    cleaned = cleaned.replace('wil ', '').replace('will ', '')
-    cleaned = cleaned.replace(' be the democratic nominee', '')
-    cleaned = cleaned.replace(' win', '').replace('?', '')
-    cleaned = cleaned.replace('dr. ', '').strip()
+    # Remove common prefixes
+    cleaned = re.sub(r'^wil\s+', '', cleaned)
+    cleaned = re.sub(r'^will\s+', '', cleaned)
+    # Remove common suffixes
+    cleaned = re.sub(r'\s+be the democratic nominee.*$', '', cleaned)
+    cleaned = re.sub(r'\s+for il-9.*$', '', cleaned)
+    cleaned = re.sub(r'\s+win.*$', '', cleaned)
+    cleaned = cleaned.replace('?', '')
+    cleaned = re.sub(r'^dr\.\s*', '', cleaned)
+    cleaned = cleaned.strip()
 
-    # Handle name variations
+    # Handle name variations/misspellings
     name_variations = {
         'kat abughazaleh': 'kat abugazaleh',
     }
@@ -350,7 +382,14 @@ def normalize_candidate_name(name):
 
 def clean_candidate_name(name):
     """Clean up candidate name for display"""
-    return name.replace('wil ', '').replace('will ', '').replace(' be the democratic nominee', '').replace('?', '').strip()
+    import re
+    # Case-insensitive cleaning for display
+    cleaned = re.sub(r'^wil\s+', '', name, flags=re.IGNORECASE)
+    cleaned = re.sub(r'^will\s+', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\s+be the democratic nominee.*$', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\s+for il-9.*$', '', cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.replace('?', '').strip()
+    return cleaned
 
 # Set up background scheduler only if not running under gunicorn workers
 # This prevents duplicate schedulers when gunicorn spawns multiple workers

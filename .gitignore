@@ -27,8 +27,10 @@ wheels/
 instance/
 .webassets-cache
 
-# Data files (optional - uncomment if you don't want to commit historical data)
-# data/historical_snapshots.json
+# Data files
+# historical_snapshots.json is runtime data (in Railway's persistent volume)
+# seed_snapshots.json is the git-tracked backup for initializing Railway
+data/historical_snapshots.json
 
 # Environment variables
 .env
