@@ -26,7 +26,7 @@ def initialize_data():
 
     # ONE-TIME RESET: Delete old data with wrong timezone format
     # Remove this block after Railway redeploys successfully
-    reset_marker = os.path.join(data_dir, '.timezone_reset_v2')
+    reset_marker = os.path.join(data_dir, '.timezone_reset_v3')
     if not os.path.exists(reset_marker):
         if os.path.exists(HISTORICAL_DATA_PATH):
             os.remove(HISTORICAL_DATA_PATH)
@@ -208,7 +208,9 @@ def save_snapshot():
 
         # Get new snapshot from request
         new_snapshot = request.json
-        new_snapshot['timestamp'] = datetime.now().isoformat()
+        # Use UTC with Z suffix for consistent timezone handling
+        from datetime import timezone
+        new_snapshot['timestamp'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
         # Append new snapshot
         snapshots.append(new_snapshot)
