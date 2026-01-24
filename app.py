@@ -411,7 +411,7 @@ import sys
 if 'gunicorn' not in sys.argv[0]:
     # Running locally or in single-process mode
     scheduler = BackgroundScheduler()
-    scheduler.add_job(func=collect_market_data, trigger="interval", minutes=3)
+    scheduler.add_job(func=collect_market_data, trigger="interval", minutes=1)
     scheduler.start()
 
     # Run initial data collection on startup
@@ -432,7 +432,7 @@ else:
         collect_market_data()  # Initial collection
 
         while True:
-            time.sleep(3 * 60)  # 3 minutes
+            time.sleep(1 * 60)  # 1 minute
             try:
                 collect_market_data()
             except Exception as e:
