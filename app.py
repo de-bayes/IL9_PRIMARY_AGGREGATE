@@ -24,9 +24,12 @@ def initialize_data():
     data_dir = os.path.dirname(HISTORICAL_DATA_PATH)
     os.makedirs(data_dir, exist_ok=True)
 
-    # If historical data doesn't exist but seed data does, copy it over
-    # This handles Railway's first deploy - the volume is empty but we have seed data from local collection
-    if not os.path.exists(HISTORICAL_DATA_PATH) and os.path.exists(SEED_DATA_PATH):
+    # Copy seed data if it exists and is larger than current historical data
+    # This ensures we use the latest seed data from local collection
+    seed_size = os.path.getsize(SEED_DATA_PATH) if os.path.exists(SEED_DATA_PATH) else 0
+    hist_size = os.path.getsize(HISTORICAL_DATA_PATH) if os.path.exists(HISTORICAL_DATA_PATH) else 0
+
+    if os.path.exists(SEED_DATA_PATH) and seed_size > hist_size:
         print(f"[{datetime.now().isoformat()}] Seeding data from {SEED_DATA_PATH}")
         with open(SEED_DATA_PATH, 'r') as src:
             seed_data = json.load(src)
