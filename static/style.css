@@ -168,6 +168,101 @@ p {
     text-shadow: 0 0 10px rgba(0, 220, 255, 0.5);
 }
 
+.nav-link-live {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(0, 220, 255, 0.9);
+    font-weight: 600;
+    padding: 0.4rem 0.8rem;
+    background: rgba(0, 220, 255, 0.08);
+    border: 1px solid rgba(0, 220, 255, 0.3);
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.nav-link-live:hover {
+    color: rgba(0, 240, 255, 1);
+    background: rgba(0, 220, 255, 0.15);
+    border-color: rgba(0, 220, 255, 0.6);
+    text-shadow: 0 0 10px rgba(0, 220, 255, 0.5);
+}
+
+.nav-link-live::after {
+    display: none;
+}
+
+.nav-dropdown {
+    position: relative;
+}
+
+.nav-dropdown-toggle {
+    background: none;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    font-family: inherit;
+}
+
+.nav-dropdown-toggle:hover {
+    color: var(--accent);
+}
+
+.dropdown-arrow {
+    font-size: 0.6rem;
+    transition: transform 0.3s ease;
+}
+
+.nav-dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.nav-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    min-width: 150px;
+    list-style: none;
+    margin: 0.5rem 0 0 0;
+    padding: 0.5rem 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.nav-dropdown.open .nav-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.nav-dropdown-menu .nav-link {
+    display: block;
+    padding: 0.6rem 1.2rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.nav-dropdown-menu .nav-link:hover {
+    background: rgba(0, 220, 255, 0.1);
+    color: var(--accent);
+}
+
 .dark-mode-toggle {
     background: none;
     border: 1px solid var(--border);
