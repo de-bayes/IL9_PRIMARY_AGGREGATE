@@ -323,14 +323,15 @@ def collect_market_data():
 
             aggregated.sort(key=lambda x: x['probability'], reverse=True)
 
-            # Save snapshot
+            # Save snapshot with UTC timestamp (Z suffix marks it as UTC)
+            from datetime import timezone
             snapshot = {
                 'candidates': [{
                     'name': c['name'],
                     'probability': round(c['probability'], 1),
                     'hasKalshi': c['hasKalshi']
                 } for c in aggregated],
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
             }
 
             # Ensure data directory exists
