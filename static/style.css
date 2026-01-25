@@ -388,7 +388,7 @@ p {
 
 .landing-nav {
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
     align-items: flex-start;
     padding: 2rem 3rem;
     position: relative;
