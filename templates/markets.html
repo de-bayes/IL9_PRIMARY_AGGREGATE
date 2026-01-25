@@ -1114,13 +1114,7 @@ function renderManifoldExpanded(candidates) {
 
 // Aggregate snapshots to reduce data points for cleaner chart lines
 function aggregateSnapshots(snapshots, period) {
-    if (period === '1h') {
-        // For 1 hour view, show all raw points (already filtered by time range)
-        return snapshots;
-    }
-
-    // For 30 days view, aggregate to hourly averages
-    const hourlyBuckets = {};
+    const buckets = {};
 
     snapshots.forEach(snapshot => {
         // Parse timestamp - handle both UTC (with Z) and local (without Z)
@@ -1135,33 +1129,40 @@ function aggregateSnapshots(snapshots, period) {
             date = new Date(year, month - 1, day, hour, min, sec || 0);
         }
 
-        // Create hourKey from local time
-        const hourKey = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}T${String(date.getHours()).padStart(2,'0')}:00:00`;
-
-        if (!hourlyBuckets[hourKey]) {
-            hourlyBuckets[hourKey] = [];
+        let bucketKey;
+        if (period === '1h') {
+            // For 1 hour view, aggregate to 2-minute intervals
+            const minutes = Math.floor(date.getMinutes() / 2) * 2;
+            bucketKey = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}T${String(date.getHours()).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:00`;
+        } else {
+            // For 30 days view, aggregate to hourly averages
+            bucketKey = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}T${String(date.getHours()).padStart(2,'0')}:00:00`;
         }
-        hourlyBuckets[hourKey].push(snapshot);
+
+        if (!buckets[bucketKey]) {
+            buckets[bucketKey] = [];
+        }
+        buckets[bucketKey].push(snapshot);
     });
 
-    // Average the snapshots in each hour bucket
-    const aggregated = Object.keys(hourlyBuckets).sort().map(hourKey => {
-        const snapshotsInHour = hourlyBuckets[hourKey];
+    // Average the snapshots in each bucket
+    const aggregated = Object.keys(buckets).sort().map(bucketKey => {
+        const snapshotsInBucket = buckets[bucketKey];
 
         // Get all unique candidate names
         const allCandidates = new Set();
-        snapshotsInHour.forEach(s => {
+        snapshotsInBucket.forEach(s => {
             s.candidates.forEach(c => allCandidates.add(c.name));
         });
 
         // Average probability for each candidate
         const candidateAverages = Array.from(allCandidates).map(name => {
-            const probs = snapshotsInHour
+            const probs = snapshotsInBucket
                 .map(s => s.candidates.find(c => c.name === name)?.probability)
                 .filter(p => p !== undefined);
 
             const avgProb = probs.reduce((sum, p) => sum + p, 0) / probs.length;
-            const hasKalshi = snapshotsInHour.some(s =>
+            const hasKalshi = snapshotsInBucket.some(s =>
                 s.candidates.find(c => c.name === name)?.hasKalshi
             );
 
@@ -1173,7 +1174,7 @@ function aggregateSnapshots(snapshots, period) {
         });
 
         return {
-            timestamp: hourKey,
+            timestamp: bucketKey,
             candidates: candidateAverages
         };
     });
