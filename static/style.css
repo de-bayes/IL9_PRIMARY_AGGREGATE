@@ -5,9 +5,10 @@
     --bg-secondary: #141829;
     --text-primary: #FFFFFF;
     --text-secondary: #B0B8D4;
-    --accent: #00D9FF;
-    --accent-hover: #00B8D4;
-    --accent-green: #00FF41;
+    --accent: #2ECC40;
+    --accent-hover: #27AE36;
+    --accent-cyan: #00D9FF;
+    --accent-green: #2ECC40;
     --accent-green-bright: #39FF14;
     --border: #2A2F4A;
 
@@ -73,7 +74,7 @@ p {
     font-size: 1.2rem;
     font-weight: 700;
     letter-spacing: 0.1em;
-    color: var(--text-primary);
+    color: var(--accent-green);
 }
 
 .nav-brand-section {
@@ -115,10 +116,21 @@ p {
     display: inline-block;
     width: 6px;
     height: 6px;
-    background: #FF4444;
+    background: #2ECC40;
     border-radius: 50%;
-    box-shadow: 0 0 6px rgba(255, 68, 68, 0.9);
-    animation: pulse-live 2s ease-in-out infinite;
+    box-shadow: 0 0 6px rgba(46, 204, 64, 0.9);
+    animation: pulse-live-green 2s ease-in-out infinite;
+}
+
+@keyframes pulse-live-green {
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 6px rgba(46, 204, 64, 0.9);
+    }
+    50% {
+        opacity: 0.7;
+        box-shadow: 0 0 10px rgba(46, 204, 64, 1);
+    }
 }
 
 .nav-divider {
@@ -174,20 +186,20 @@ p {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: rgba(0, 220, 255, 0.9);
+    color: rgba(46, 204, 64, 0.9);
     font-weight: 600;
     padding: 0.4rem 0.8rem;
-    background: rgba(0, 220, 255, 0.08);
-    border: 1px solid rgba(0, 220, 255, 0.3);
+    background: rgba(46, 204, 64, 0.08);
+    border: 1px solid rgba(46, 204, 64, 0.3);
     border-radius: 6px;
     transition: all 0.3s ease;
 }
 
 .nav-link-live:hover {
-    color: rgba(0, 240, 255, 1);
-    background: rgba(0, 220, 255, 0.15);
-    border-color: rgba(0, 220, 255, 0.6);
-    text-shadow: 0 0 10px rgba(0, 220, 255, 0.5);
+    color: rgba(46, 204, 64, 1);
+    background: rgba(46, 204, 64, 0.15);
+    border-color: rgba(46, 204, 64, 0.6);
+    text-shadow: 0 0 10px rgba(46, 204, 64, 0.5);
 }
 
 .nav-link-live::after {
@@ -1687,7 +1699,7 @@ p {
 .candidate-rank {
     font-family: var(--font-mono);
     font-size: 0.8rem;
-    color: var(--accent);
+    color: var(--accent-green);
     margin-bottom: 1rem;
     text-transform: uppercase;
 }
@@ -1716,7 +1728,7 @@ p {
     font-family: var(--font-mono);
     font-size: 2.5rem;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--accent-green);
 }
 
 .odds-label {
@@ -2036,7 +2048,7 @@ p {
 }
 
 .footer strong {
-    color: var(--accent);
+    color: var(--accent-green);
     font-weight: 600;
 }
 
