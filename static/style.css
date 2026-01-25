@@ -430,7 +430,7 @@ p {
 
 .landing-hero {
     position: absolute;
-    top: 50%;
+    top: 38%;
     left: 3rem;
     transform: translateY(-50%);
     z-index: 10;
@@ -789,14 +789,22 @@ p {
 
 .landing-title-new {
     font-family: 'Arial Black', 'Arial Bold', Arial, sans-serif;
-    font-size: 4.5rem;
+    font-size: 4rem;
     font-weight: 900;
-    line-height: 1.1;
+    line-height: 1.15;
     color: #2ECC40;
     letter-spacing: -0.02em;
     text-transform: uppercase;
     text-shadow: 0 0 15px rgba(46, 204, 64, 0.35);
     margin: 0;
+}
+
+.title-secondary {
+    display: block;
+    font-size: 0.6em;
+    letter-spacing: 0.05em;
+    margin-top: 0.3em;
+    opacity: 0.9;
 }
 
 .hero-subtitle-label {
