@@ -55,6 +55,3 @@ Screenshot*.png
 
 # Timezone reset markers (deployment-specific)
 data/.timezone_reset*
-
-# Empty folders
-static/images/

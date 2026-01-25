@@ -289,7 +289,7 @@ p {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: #000000 url('/static/images/capitol-bg.jpg') center center no-repeat;
+    background: #000000 url('/static/images/capitol-bg.png') center center no-repeat;
     background-size: cover;
     overflow: hidden;
     display: flex;
