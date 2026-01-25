@@ -415,6 +415,19 @@ p {
     letter-spacing: 0.02em;
 }
 
+.nav-link-landing {
+    font-family: 'Arial', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.nav-link-landing:hover {
+    color: rgba(255, 255, 255, 1);
+}
+
 .landing-hero {
     position: absolute;
     top: 50%;
@@ -847,7 +860,11 @@ p {
     position: absolute;
     bottom: 3rem;
     left: 3rem;
+    right: 3rem;
     z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
 }
 
 .landing-logo {
