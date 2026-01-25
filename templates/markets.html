@@ -265,6 +265,15 @@
     border-radius: 8px;
 }
 
+.candidate-headshot {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 0.75rem;
+    border: 2px solid var(--border-color);
+}
+
 .big-percent {
     font-size: 3.5rem;
     font-weight: 700;
@@ -584,6 +593,33 @@ let manifoldData = {};
 let kalshiData = {};
 let currentChartPeriod = '30d';
 
+// Candidate headshot mapping
+const candidateImages = {
+    'daniel biss': '/static/images/candidates/biss.png',
+    'biss': '/static/images/candidates/biss.png',
+    'erin bushra': '/static/images/candidates/bushra.png',
+    'bushra': '/static/images/candidates/bushra.png',
+    'robert fine': '/static/images/candidates/fine.png',
+    'fine': '/static/images/candidates/fine.png',
+    'kat abugazaleh': '/static/images/candidates/katabu.png',
+    'abugazaleh': '/static/images/candidates/katabu.png',
+    'mike simmons': '/static/images/candidates/simmons.jpg',
+    'simmons': '/static/images/candidates/simmons.jpg',
+    'phil andrew': '/static/images/candidates/philandrew.png',
+    'andrew': '/static/images/candidates/philandrew.png'
+};
+
+function getCandidateImage(name) {
+    const normalized = name.toLowerCase().trim();
+    // Try full name first
+    if (candidateImages[normalized]) return candidateImages[normalized];
+    // Try last name
+    const lastName = normalized.split(' ').pop();
+    if (candidateImages[lastName]) return candidateImages[lastName];
+    // Default placeholder
+    return null;
+}
+
 function toggleMarket(id) {
     const market = document.getElementById(id);
     market.classList.toggle('open');
@@ -860,8 +896,11 @@ function renderBigOdds(candidates) {
     const container = document.getElementById('bigOddsDisplay');
     container.innerHTML = candidates.slice(0, 6).map(c => {
         const asterisk = !c.hasKalshi ? '*' : '';
+        const imageUrl = getCandidateImage(c.name);
+        const imageHtml = imageUrl ? `<img src="${imageUrl}" alt="${c.name}" class="candidate-headshot">` : '';
         return `
         <div class="big-odds-candidate">
+            ${imageHtml}
             <span class="big-percent">${Math.round(c.probability)}%</span>
             <span class="big-name">${c.name}${asterisk}</span>
         </div>
