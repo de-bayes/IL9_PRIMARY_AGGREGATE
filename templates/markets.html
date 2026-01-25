@@ -21,6 +21,17 @@
         <h1 class="inner-title">Prediction Markets</h1>
         <p class="page-subtitle">Aggregated odds from multiple prediction markets</p>
 
+        <section class="leader-featured" id="leaderFeatured">
+            <div class="leader-card">
+                <img src="" alt="" class="leader-photo" id="leaderPhoto">
+                <div class="leader-info">
+                    <span class="leader-label">LEADING</span>
+                    <span class="leader-name" id="leaderName">Loading...</span>
+                    <span class="leader-percent" id="leaderPercent">--%</span>
+                </div>
+            </div>
+        </section>
+
         <section class="big-odds-display" id="bigOddsDisplay">
             <div class="big-odds-candidate">
                 <span class="big-percent">--</span>
@@ -265,19 +276,74 @@
     border-radius: 8px;
 }
 
-.candidate-headshot {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-bottom: 0.75rem;
-    border: 3px solid var(--accent-green, #2ECC40);
-    box-shadow: 0 0 15px rgba(46, 204, 64, 0.3);
+.leader-featured {
+    margin: 2rem 0;
 }
 
-.big-odds-candidate.leader {
-    border-color: var(--accent-green, #2ECC40);
-    background: rgba(46, 204, 64, 0.05);
+.leader-card {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem 2rem;
+    background: linear-gradient(135deg, rgba(46, 204, 64, 0.1) 0%, rgba(46, 204, 64, 0.05) 100%);
+    border: 2px solid var(--accent-green, #2ECC40);
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(46, 204, 64, 0.15);
+}
+
+.leader-photo {
+    width: 100px;
+    height: 100px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 3px solid var(--accent-green, #2ECC40);
+}
+
+.leader-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.leader-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--accent-green, #2ECC40);
+    text-transform: uppercase;
+}
+
+.leader-name {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: 'Times New Roman', Times, serif;
+}
+
+.leader-percent {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--accent-green, #2ECC40);
+    font-family: 'Times New Roman', Times, serif;
+    line-height: 1;
+}
+
+@media (max-width: 500px) {
+    .leader-card {
+        flex-direction: column;
+        text-align: center;
+        padding: 1.25rem;
+    }
+    .leader-photo {
+        width: 80px;
+        height: 80px;
+    }
+    .leader-name {
+        font-size: 1.4rem;
+    }
+    .leader-percent {
+        font-size: 2.5rem;
+    }
 }
 
 .big-percent {
@@ -899,16 +965,31 @@ async function fetchManifoldData() {
 }
 
 function renderBigOdds(candidates) {
+    // Update leader featured card
+    if (candidates.length > 0) {
+        const leader = candidates[0];
+        const leaderImage = getCandidateImage(leader.name);
+        const photoEl = document.getElementById('leaderPhoto');
+        const nameEl = document.getElementById('leaderName');
+        const percentEl = document.getElementById('leaderPercent');
+
+        if (leaderImage) {
+            photoEl.src = leaderImage;
+            photoEl.alt = leader.name;
+            photoEl.style.display = 'block';
+        } else {
+            photoEl.style.display = 'none';
+        }
+        nameEl.textContent = leader.name;
+        percentEl.textContent = Math.round(leader.probability) + '%';
+    }
+
+    // Update other candidates grid (skip leader)
     const container = document.getElementById('bigOddsDisplay');
-    container.innerHTML = candidates.slice(0, 6).map((c, index) => {
+    container.innerHTML = candidates.slice(1, 6).map((c) => {
         const asterisk = !c.hasKalshi ? '*' : '';
-        // Only show headshot for the leading candidate
-        const imageUrl = index === 0 ? getCandidateImage(c.name) : null;
-        const imageHtml = imageUrl ? `<img src="${imageUrl}" alt="${c.name}" class="candidate-headshot">` : '';
-        const leaderClass = index === 0 ? ' leader' : '';
         return `
-        <div class="big-odds-candidate${leaderClass}">
-            ${imageHtml}
+        <div class="big-odds-candidate">
             <span class="big-percent">${Math.round(c.probability)}%</span>
             <span class="big-name">${c.name}${asterisk}</span>
         </div>
