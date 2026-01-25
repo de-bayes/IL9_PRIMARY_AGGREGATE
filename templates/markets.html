@@ -37,8 +37,16 @@
                             <span class="leader-stat-value" id="leaderManifold">--%</span>
                         </div>
                         <div class="leader-stat">
-                            <span class="leader-stat-label">Kalshi</span>
-                            <span class="leader-stat-value" id="leaderKalshi">--%</span>
+                            <span class="leader-stat-label">Kalshi Last</span>
+                            <span class="leader-stat-value" id="leaderKalshiLast">--%</span>
+                        </div>
+                        <div class="leader-stat">
+                            <span class="leader-stat-label">Kalshi Midpoint</span>
+                            <span class="leader-stat-value" id="leaderKalshiMid">--%</span>
+                        </div>
+                        <div class="leader-stat">
+                            <span class="leader-stat-label">Kalshi Liq-Weighted</span>
+                            <span class="leader-stat-value" id="leaderKalshiLiq">--%</span>
                         </div>
                     </div>
                 </div>
@@ -337,7 +345,8 @@
 
 .leader-stats {
     display: flex;
-    gap: 2.5rem;
+    flex-wrap: wrap;
+    gap: 1.5rem 2.5rem;
     margin-top: 0.5rem;
 }
 
@@ -1022,7 +1031,9 @@ function renderBigOdds(candidates) {
         const nameEl = document.getElementById('leaderName');
         const aggregateEl = document.getElementById('leaderAggregate');
         const manifoldEl = document.getElementById('leaderManifold');
-        const kalshiEl = document.getElementById('leaderKalshi');
+        const kalshiLastEl = document.getElementById('leaderKalshiLast');
+        const kalshiMidEl = document.getElementById('leaderKalshiMid');
+        const kalshiLiqEl = document.getElementById('leaderKalshiLiq');
 
         if (leaderImage) {
             photoEl.src = leaderImage;
@@ -1037,10 +1048,15 @@ function renderBigOdds(candidates) {
         // Get Manifold and Kalshi data for leader
         const leaderKey = normalizeCandidate(leader.name);
         const manifoldProb = manifoldData[leaderKey]?.probability || 0;
-        const kalshiProb = kalshiData[leaderKey]?.last_price || 0;
+        const kalshiInfo = kalshiData[leaderKey] || {};
+        const kalshiLast = kalshiInfo.last_price || 0;
+        const kalshiMid = kalshiInfo.midpoint || 0;
+        const kalshiLiq = kalshiInfo.kalshiLiquidity || 0;
 
-        manifoldEl.textContent = manifoldProb > 0 ? Math.round(manifoldProb) + '%' : '--';
-        kalshiEl.textContent = kalshiProb > 0 ? Math.round(kalshiProb) + '%' : '--';
+        manifoldEl.textContent = manifoldProb > 0 ? manifoldProb.toFixed(1) + '%' : '--';
+        kalshiLastEl.textContent = kalshiLast > 0 ? kalshiLast.toFixed(1) + '%' : '--';
+        kalshiMidEl.textContent = kalshiMid > 0 ? kalshiMid.toFixed(1) + '%' : '--';
+        kalshiLiqEl.textContent = kalshiLiq > 0 ? kalshiLiq.toFixed(1) + '%' : '--';
     }
 
     // Update other candidates grid (skip leader)
