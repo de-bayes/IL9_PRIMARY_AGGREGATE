@@ -4,12 +4,9 @@
 
 {% block content %}
 <div class="landing-wrapper">
-    <div class="vertical-columns" id="verticalColumns"></div>
-
     <div class="landing-nav">
         <div class="landing-nav-right">
-            <a href="/methodology" class="nav-btn-landing">Methodology</a>
-            <a href="/markets" class="nav-btn-landing">Explore Markets</a>
+            <a href="/markets" class="nav-btn-landing">View Forecast</a>
         </div>
     </div>
 
@@ -20,13 +17,7 @@
                 CONGRESSIONAL PRIMARY<br>
                 <span class="title-secondary">FORECAST MODEL AGGREGATOR</span>
             </h1>
-            <p class="hero-inspiration">Inspired by 538, Silver Bulletin, Nate Silver & Galen Druke</p>
-            <p class="hero-credit-line">A passion project by Ryan McComb</p>
         </div>
-    </div>
-
-    <div class="landing-bottom-new">
-        <div class="landing-logo">IL9CAST</div>
     </div>
 </div>
 
@@ -39,31 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navbar) navbar.style.display = 'none';
     if (footer) footer.style.display = 'none';
     if (main) main.style.padding = '0';
-
-    // Generate vertical columns with offset gradients
-    const container = document.getElementById('verticalColumns');
-    const numCols = 15;
-
-    for (let i = 0; i < numCols; i++) {
-        const col = document.createElement('div');
-        col.className = 'v-col';
-
-        // Blue light (bottom-right): fades as you go LEFT, vertical shift
-        const blueOpacity = 0.15 + (i / 14) * 0.85;
-        const blueOffset = (i - 7) * 3;
-
-        // Cyan light (top-left): fades as you go RIGHT, vertical shift
-        const cyanOpacity = 0.15 + ((14 - i) / 14) * 0.85;
-        const cyanOffset = (7 - i) * 3;
-
-        col.style.setProperty('--blue-offset', `${blueOffset}%`);
-        col.style.setProperty('--blue-opacity', blueOpacity);
-        col.style.setProperty('--cyan-offset', `${cyanOffset}%`);
-        col.style.setProperty('--cyan-opacity', cyanOpacity);
-        container.appendChild(col);
-    }
-
-    // No menu toggle needed - Explore button goes directly to Markets
 });
 </script>
 {% endblock %}

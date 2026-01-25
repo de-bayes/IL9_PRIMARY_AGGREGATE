@@ -388,8 +388,8 @@ p {
 
 .landing-nav {
     position: absolute;
-    top: 38%;
-    right: 3rem;
+    top: 50%;
+    right: 4rem;
     transform: translateY(-50%);
     z-index: 10;
 }
@@ -449,8 +449,8 @@ p {
 
 .landing-hero {
     position: absolute;
-    top: 38%;
-    left: 3rem;
+    top: 50%;
+    left: 4rem;
     transform: translateY(-50%);
     z-index: 10;
 }
