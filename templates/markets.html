@@ -266,12 +266,18 @@
 }
 
 .candidate-headshot {
-    width: 70px;
-    height: 70px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     object-fit: cover;
     margin-bottom: 0.75rem;
-    border: 2px solid var(--border-color);
+    border: 3px solid var(--accent-green, #2ECC40);
+    box-shadow: 0 0 15px rgba(46, 204, 64, 0.3);
+}
+
+.big-odds-candidate.leader {
+    border-color: var(--accent-green, #2ECC40);
+    background: rgba(46, 204, 64, 0.05);
 }
 
 .big-percent {
@@ -894,12 +900,14 @@ async function fetchManifoldData() {
 
 function renderBigOdds(candidates) {
     const container = document.getElementById('bigOddsDisplay');
-    container.innerHTML = candidates.slice(0, 6).map(c => {
+    container.innerHTML = candidates.slice(0, 6).map((c, index) => {
         const asterisk = !c.hasKalshi ? '*' : '';
-        const imageUrl = getCandidateImage(c.name);
+        // Only show headshot for the leading candidate
+        const imageUrl = index === 0 ? getCandidateImage(c.name) : null;
         const imageHtml = imageUrl ? `<img src="${imageUrl}" alt="${c.name}" class="candidate-headshot">` : '';
+        const leaderClass = index === 0 ? ' leader' : '';
         return `
-        <div class="big-odds-candidate">
+        <div class="big-odds-candidate${leaderClass}">
             ${imageHtml}
             <span class="big-percent">${Math.round(c.probability)}%</span>
             <span class="big-name">${c.name}${asterisk}</span>
