@@ -4,11 +4,11 @@
 
 {% block content %}
 <div class="inner-page markets-page">
-    <div class="parallax-light warm-1" data-speed="0.5" data-direction="1"></div>
-    <div class="parallax-light warm-2" data-speed="0.4" data-direction="-1"></div>
-    <div class="parallax-light warm-3" data-speed="0.3" data-direction="-1"></div>
-    <div class="parallax-light warm-4" data-speed="0.35" data-direction="1" data-appear="300"></div>
-    <div class="parallax-light warm-5" data-speed="0.45" data-direction="-1" data-appear="500"></div>
+    <div class="parallax-light warm-1" data-speed="0.12" data-direction="1"></div>
+    <div class="parallax-light warm-2" data-speed="0.08" data-direction="-1"></div>
+    <div class="parallax-light warm-3" data-speed="0.1" data-direction="-1"></div>
+    <div class="parallax-light warm-4" data-speed="0.09" data-direction="1" data-appear="400"></div>
+    <div class="parallax-light warm-5" data-speed="0.11" data-direction="-1" data-appear="600"></div>
     <div class="warm-glow"></div>
 
     <nav class="inner-nav">
@@ -1746,9 +1746,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // Move horizontally and vertically based on scroll
-                const moveX = scrollY * speed * direction * 1.2;
-                const moveY = scrollY * speed * direction * -0.4;
+                // Move horizontally and vertically based on scroll (subtle)
+                const moveX = scrollY * speed * direction * 0.5;
+                const moveY = scrollY * speed * direction * -0.2;
 
                 light.style.transform = `translate(${moveX}px, ${moveY}px)`;
             });
