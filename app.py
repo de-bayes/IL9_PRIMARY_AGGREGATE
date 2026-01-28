@@ -253,6 +253,23 @@ def get_snapshots():
                     return jsonify([])
         except (json.JSONDecodeError, IOError) as e:
             print(f"[{datetime.now().isoformat()}] Error reading snapshots: {e}")
+            # Try to recover if this is an "Extra data" error
+            if "Extra data" in str(e):
+                try:
+                    with open(HISTORICAL_DATA_PATH, 'r') as f:
+                        content = f.read()
+                    last_bracket = content.rfind(']')
+                    if last_bracket > 0:
+                        valid_content = content[:last_bracket + 1]
+                        try:
+                            snapshots = json.loads(valid_content)
+                            if isinstance(snapshots, list):
+                                print(f"[{datetime.now().isoformat()}] Recovered {len(snapshots)} snapshots in get_snapshots")
+                                return jsonify(snapshots)
+                        except json.JSONDecodeError:
+                            pass
+                except Exception:
+                    pass
             return jsonify([])
 
         return jsonify(snapshots)
@@ -387,7 +404,33 @@ def collect_market_data():
                             snapshots = []
                 except (json.JSONDecodeError, IOError) as e:
                     print(f"[{datetime.now().isoformat()}] Error loading snapshots: {e}, starting fresh")
-                    snapshots = []
+                    # Try to recover data if this is an "Extra data" error
+                    if "Extra data" in str(e):
+                        try:
+                            with open(HISTORICAL_DATA_PATH, 'r') as f:
+                                content = f.read()
+                            # Find the last complete JSON array
+                            last_bracket = content.rfind(']')
+                            if last_bracket > 0:
+                                valid_content = content[:last_bracket + 1]
+                                try:
+                                    snapshots = json.loads(valid_content)
+                                    if isinstance(snapshots, list):
+                                        print(f"[{datetime.now().isoformat()}] Recovered {len(snapshots)} snapshots from file with extra data")
+                                        # Save the repaired version
+                                        temp_path = HISTORICAL_DATA_PATH + '.tmp'
+                                        with open(temp_path, 'w') as repair_f:
+                                            json.dump(snapshots, repair_f, indent=2)
+                                        os.replace(temp_path, HISTORICAL_DATA_PATH)
+                                    else:
+                                        snapshots = []
+                                except json.JSONDecodeError:
+                                    snapshots = []
+                        except Exception as recovery_e:
+                            print(f"[{datetime.now().isoformat()}] Recovery failed: {recovery_e}")
+                            snapshots = []
+                    else:
+                        snapshots = []
 
             # Append new snapshot
             snapshots.append(snapshot)
@@ -432,7 +475,30 @@ def validate_and_repair_data_file():
             except json.JSONDecodeError as e:
                 print(f"[{datetime.now().isoformat()}] JSON error in historical data: {e}")
                 
-                # Try to find the last valid JSON object
+                # Special handling for "Extra data" error - this means we have valid JSON
+                # followed by extra content. Try to find the valid JSON portion.
+                if "Extra data" in str(e):
+                    # Find the position where the error occurred
+                    error_pos = e.pos if hasattr(e, 'pos') else len(content) // 2
+                    
+                    # Try to parse just the content up to the error position
+                    try:
+                        partial_content = content[:error_pos]
+                        # Find the last complete JSON structure
+                        last_bracket = partial_content.rfind(']')
+                        if last_bracket > 0:
+                            valid_content = partial_content[:last_bracket + 1]
+                            data = json.loads(valid_content)
+                            if isinstance(data, list):
+                                print(f"[{datetime.now().isoformat()}] Recovered {len(data)} snapshots from file with extra data")
+                                # Save the valid portion
+                                with open(HISTORICAL_DATA_PATH, 'w') as repair_f:
+                                    json.dump(data, repair_f, indent=2)
+                                return
+                    except json.JSONDecodeError:
+                        pass
+                
+                # Try to find the last valid JSON object using line-by-line approach
                 lines = content.split('\n')
                 valid_data = []
                 current_obj = ""
