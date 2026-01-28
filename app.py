@@ -199,12 +199,17 @@ def save_snapshot():
         # Ensure data directory exists
         os.makedirs(os.path.dirname(HISTORICAL_DATA_PATH), exist_ok=True)
 
-        # Load existing snapshots
+        # Load existing snapshots with error handling
+        snapshots = []
         if os.path.exists(HISTORICAL_DATA_PATH):
-            with open(HISTORICAL_DATA_PATH, 'r') as f:
-                snapshots = json.load(f)
-        else:
-            snapshots = []
+            try:
+                with open(HISTORICAL_DATA_PATH, 'r') as f:
+                    snapshots = json.load(f)
+                    if not isinstance(snapshots, list):
+                        snapshots = []
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"[{datetime.now().isoformat()}] Error loading snapshots in save_snapshot: {e}")
+                snapshots = []
 
         # Get new snapshot from request
         new_snapshot = request.json
@@ -215,9 +220,20 @@ def save_snapshot():
         # Append new snapshot
         snapshots.append(new_snapshot)
 
-        # Save back to file
-        with open(HISTORICAL_DATA_PATH, 'w') as f:
-            json.dump(snapshots, f, indent=2)
+        # Save back to file with atomic write
+        temp_path = HISTORICAL_DATA_PATH + '.tmp'
+        try:
+            with open(temp_path, 'w') as f:
+                json.dump(snapshots, f, indent=2)
+            os.replace(temp_path, HISTORICAL_DATA_PATH)
+        except Exception as e:
+            print(f"[{datetime.now().isoformat()}] Error saving snapshot: {e}")
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except:
+                    pass
+            raise
 
         return jsonify({"success": True, "total_snapshots": len(snapshots)})
     except Exception as e:
@@ -230,8 +246,14 @@ def get_snapshots():
         if not os.path.exists(HISTORICAL_DATA_PATH):
             return jsonify([])
 
-        with open(HISTORICAL_DATA_PATH, 'r') as f:
-            snapshots = json.load(f)
+        try:
+            with open(HISTORICAL_DATA_PATH, 'r') as f:
+                snapshots = json.load(f)
+                if not isinstance(snapshots, list):
+                    return jsonify([])
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"[{datetime.now().isoformat()}] Error reading snapshots: {e}")
+            return jsonify([])
 
         return jsonify(snapshots)
     except Exception as e:
@@ -242,6 +264,9 @@ def collect_market_data():
     """Fetch market data and save snapshot automatically"""
     try:
         print(f"[{datetime.now().isoformat()}] Running automatic data collection...")
+
+        # First, validate and potentially repair the historical data file
+        validate_and_repair_data_file()
 
         # Fetch Manifold data
         manifold_data = {}
@@ -350,18 +375,39 @@ def collect_market_data():
             # Ensure data directory exists
             os.makedirs(os.path.dirname(HISTORICAL_DATA_PATH), exist_ok=True)
 
-            # Load existing snapshots
+            # Load existing snapshots with error handling
             snapshots = []
             if os.path.exists(HISTORICAL_DATA_PATH):
-                with open(HISTORICAL_DATA_PATH, 'r') as f:
-                    snapshots = json.load(f)
+                try:
+                    with open(HISTORICAL_DATA_PATH, 'r') as f:
+                        snapshots = json.load(f)
+                        # Ensure snapshots is a list
+                        if not isinstance(snapshots, list):
+                            print(f"[{datetime.now().isoformat()}] Invalid data format, resetting to empty list")
+                            snapshots = []
+                except (json.JSONDecodeError, IOError) as e:
+                    print(f"[{datetime.now().isoformat()}] Error loading snapshots: {e}, starting fresh")
+                    snapshots = []
 
             # Append new snapshot
             snapshots.append(snapshot)
 
-            # Save back to file
-            with open(HISTORICAL_DATA_PATH, 'w') as f:
-                json.dump(snapshots, f, indent=2)
+            # Save back to file with atomic write
+            temp_path = HISTORICAL_DATA_PATH + '.tmp'
+            try:
+                with open(temp_path, 'w') as f:
+                    json.dump(snapshots, f, indent=2)
+                # Atomic rename to prevent corruption
+                os.replace(temp_path, HISTORICAL_DATA_PATH)
+            except Exception as e:
+                print(f"[{datetime.now().isoformat()}] Error saving snapshots: {e}")
+                # Clean up temp file if it exists
+                if os.path.exists(temp_path):
+                    try:
+                        os.remove(temp_path)
+                    except:
+                        pass
+                raise
 
             print(f"[{datetime.now().isoformat()}] Snapshot saved successfully. Total snapshots: {len(snapshots)}")
         else:
@@ -369,6 +415,55 @@ def collect_market_data():
 
     except Exception as e:
         print(f"[{datetime.now().isoformat()}] Error in automatic data collection: {e}")
+
+def validate_and_repair_data_file():
+    """Validate the historical data file and repair if corrupted"""
+    try:
+        if not os.path.exists(HISTORICAL_DATA_PATH):
+            return
+            
+        # Try to read and parse the file
+        with open(HISTORICAL_DATA_PATH, 'r') as f:
+            try:
+                content = f.read()
+                data = json.loads(content)
+                # If we get here, the file is valid
+                return
+            except json.JSONDecodeError as e:
+                print(f"[{datetime.now().isoformat()}] JSON error in historical data: {e}")
+                
+                # Try to find the last valid JSON object
+                lines = content.split('\n')
+                valid_data = []
+                current_obj = ""
+                
+                for line in lines:
+                    current_obj += line + "\n"
+                    try:
+                        obj = json.loads(current_obj.strip())
+                        if isinstance(obj, list):
+                            valid_data = obj
+                            break
+                        elif isinstance(obj, dict):
+                            valid_data.append(obj)
+                            current_obj = ""
+                    except json.JSONDecodeError:
+                        # Not a complete object yet, continue
+                        pass
+                
+                # If we found valid data, save it
+                if valid_data:
+                    print(f"[{datetime.now().isoformat()}] Recovered {len(valid_data)} snapshots from corrupted file")
+                    with open(HISTORICAL_DATA_PATH, 'w') as repair_f:
+                        json.dump(valid_data, repair_f, indent=2)
+                else:
+                    # File is completely corrupted, start fresh
+                    print(f"[{datetime.now().isoformat()}] Historical data file corrupted beyond repair, starting fresh")
+                    with open(HISTORICAL_DATA_PATH, 'w') as repair_f:
+                        json.dump([], repair_f)
+                        
+    except Exception as e:
+        print(f"[{datetime.now().isoformat()}] Error validating data file: {e}")
 
 def normalize_candidate_name(name):
     """Normalize candidate name for matching across platforms"""
