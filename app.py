@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_file
 import random
 from datetime import datetime, timedelta
 import requests
@@ -9,41 +9,146 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 
-# Path to historical data storage
+# Path to historical data storage (JSONL format - JSON Lines)
 # On Railway, this will be in the persistent volume at /app/data
-HISTORICAL_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'historical_snapshots.json')
+HISTORICAL_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'historical_snapshots.jsonl')
 
 # Seed data path - git-tracked backup that Railway will use to initialize the volume
 SEED_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'seed_snapshots.json')
+
+# Legacy JSON path for migration
+LEGACY_JSON_PATH = os.path.join(os.path.dirname(__file__), 'data', 'historical_snapshots.json')
+
+# ===== JSONL HELPER FUNCTIONS =====
+
+def read_snapshots_jsonl(filepath):
+    """
+    Read snapshots from JSONL file.
+    Each line is a separate JSON object.
+    Returns list of snapshot dictionaries.
+    """
+    snapshots = []
+    if not os.path.exists(filepath):
+        return snapshots
+
+    try:
+        with open(filepath, 'r') as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    snapshot = json.loads(line)
+                    snapshots.append(snapshot)
+                except json.JSONDecodeError as e:
+                    print(f"[{datetime.now().isoformat()}] Error parsing line {line_num}: {e}")
+                    continue
+    except (IOError, OSError) as e:
+        print(f"[{datetime.now().isoformat()}] Error reading JSONL file: {e}")
+
+    return snapshots
+
+def append_snapshot_jsonl(filepath, snapshot):
+    """
+    Append a single snapshot to JSONL file.
+    Atomic operation: writes to temp file then renames.
+    """
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+    # Write to temp file first
+    temp_path = filepath + '.tmp'
+    try:
+        with open(temp_path, 'w') as f:
+            f.write(json.dumps(snapshot) + '\n')
+
+        # Atomic append: create new file with old content + new line
+        if os.path.exists(filepath):
+            # Read existing content
+            with open(filepath, 'r') as existing:
+                existing_content = existing.read()
+
+            # Write existing + new to temp
+            with open(temp_path, 'w') as f:
+                f.write(existing_content)
+                if existing_content and not existing_content.endswith('\n'):
+                    f.write('\n')
+                f.write(json.dumps(snapshot) + '\n')
+
+        # Atomic replace
+        os.replace(temp_path, filepath)
+        return True
+
+    except Exception as e:
+        print(f"[{datetime.now().isoformat()}] Error appending to JSONL: {e}")
+        # Clean up temp file
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except:
+                pass
+        raise
+
+def count_snapshots_jsonl(filepath):
+    """Count total snapshots in JSONL file without loading all into memory"""
+    if not os.path.exists(filepath):
+        return 0
+
+    count = 0
+    with open(filepath, 'r') as f:
+        for line in f:
+            if line.strip():
+                count += 1
+    return count
+
+# ===== INITIALIZATION =====
 
 def initialize_data():
     """
     Initialize the data directory and seed from backup if needed.
     On Railway: copies seed data to persistent volume on first deploy.
+    Migrates from legacy JSON format to JSONL if needed.
     """
     data_dir = os.path.dirname(HISTORICAL_DATA_PATH)
     os.makedirs(data_dir, exist_ok=True)
 
-    # ONE-TIME RESET: Delete old data with wrong timezone format
-    # Remove this block after Railway redeploys successfully
-    reset_marker = os.path.join(data_dir, '.timezone_reset_v3')
-    if not os.path.exists(reset_marker):
-        if os.path.exists(HISTORICAL_DATA_PATH):
-            os.remove(HISTORICAL_DATA_PATH)
-            print(f"[{datetime.now().isoformat()}] One-time reset: deleted old data for timezone fix")
-        # Create marker so we don't reset again
-        with open(reset_marker, 'w') as f:
-            f.write('done')
+    # Migrate from legacy JSON to JSONL if needed
+    if os.path.exists(LEGACY_JSON_PATH) and not os.path.exists(HISTORICAL_DATA_PATH):
+        print(f"[{datetime.now().isoformat()}] Migrating from JSON to JSONL format...")
+        try:
+            with open(LEGACY_JSON_PATH, 'r') as f:
+                legacy_data = json.load(f)
+
+            if isinstance(legacy_data, list):
+                with open(HISTORICAL_DATA_PATH, 'w') as f:
+                    for snapshot in legacy_data:
+                        f.write(json.dumps(snapshot) + '\n')
+                print(f"[{datetime.now().isoformat()}] Migrated {len(legacy_data)} snapshots to JSONL")
+
+                # Backup legacy file
+                backup_path = LEGACY_JSON_PATH + '.pre-jsonl-backup'
+                if not os.path.exists(backup_path):
+                    import shutil
+                    shutil.copy2(LEGACY_JSON_PATH, backup_path)
+                    print(f"[{datetime.now().isoformat()}] Legacy JSON backed up to {backup_path}")
+        except Exception as e:
+            print(f"[{datetime.now().isoformat()}] Error migrating to JSONL: {e}")
 
     # Only seed data if historical file doesn't exist at all
     # Once Railway starts collecting, never overwrite its data
     if not os.path.exists(HISTORICAL_DATA_PATH) and os.path.exists(SEED_DATA_PATH):
         print(f"[{datetime.now().isoformat()}] Seeding data from {SEED_DATA_PATH}")
-        with open(SEED_DATA_PATH, 'r') as src:
-            seed_data = json.load(src)
-        with open(HISTORICAL_DATA_PATH, 'w') as dst:
-            json.dump(seed_data, dst, indent=2)
-        print(f"[{datetime.now().isoformat()}] Seeded {len(seed_data)} snapshots")
+        try:
+            with open(SEED_DATA_PATH, 'r') as src:
+                seed_data = json.load(src)
+
+            if isinstance(seed_data, list):
+                with open(HISTORICAL_DATA_PATH, 'w') as dst:
+                    for snapshot in seed_data:
+                        dst.write(json.dumps(snapshot) + '\n')
+                print(f"[{datetime.now().isoformat()}] Seeded {len(seed_data)} snapshots in JSONL format")
+        except Exception as e:
+            print(f"[{datetime.now().isoformat()}] Error seeding data: {e}")
 
 # Initialize data on module load
 initialize_data()
@@ -194,85 +299,46 @@ def get_kalshi_history(ticker):
 
 @app.route('/api/snapshot', methods=['POST'])
 def save_snapshot():
-    """Save a historical snapshot of aggregated probabilities"""
+    """Save a historical snapshot of aggregated probabilities (JSONL format)"""
     try:
-        # Ensure data directory exists
-        os.makedirs(os.path.dirname(HISTORICAL_DATA_PATH), exist_ok=True)
-
-        # Load existing snapshots with error handling
-        snapshots = []
-        if os.path.exists(HISTORICAL_DATA_PATH):
-            try:
-                with open(HISTORICAL_DATA_PATH, 'r') as f:
-                    snapshots = json.load(f)
-                    if not isinstance(snapshots, list):
-                        snapshots = []
-            except (json.JSONDecodeError, IOError) as e:
-                print(f"[{datetime.now().isoformat()}] Error loading snapshots in save_snapshot: {e}")
-                snapshots = []
-
         # Get new snapshot from request
         new_snapshot = request.json
         # Use UTC with Z suffix for consistent timezone handling
         from datetime import timezone
         new_snapshot['timestamp'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
-        # Append new snapshot
-        snapshots.append(new_snapshot)
+        # Append to JSONL file
+        append_snapshot_jsonl(HISTORICAL_DATA_PATH, new_snapshot)
 
-        # Save back to file with atomic write
-        temp_path = HISTORICAL_DATA_PATH + '.tmp'
-        try:
-            with open(temp_path, 'w') as f:
-                json.dump(snapshots, f, indent=2)
-            os.replace(temp_path, HISTORICAL_DATA_PATH)
-        except Exception as e:
-            print(f"[{datetime.now().isoformat()}] Error saving snapshot: {e}")
-            if os.path.exists(temp_path):
-                try:
-                    os.remove(temp_path)
-                except:
-                    pass
-            raise
+        # Count total snapshots
+        total = count_snapshots_jsonl(HISTORICAL_DATA_PATH)
 
-        return jsonify({"success": True, "total_snapshots": len(snapshots)})
+        return jsonify({"success": True, "total_snapshots": total})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/snapshots')
 def get_snapshots():
-    """Retrieve historical snapshots for charting"""
+    """Retrieve historical snapshots for charting (reads JSONL format)"""
     try:
-        if not os.path.exists(HISTORICAL_DATA_PATH):
-            return jsonify([])
-
-        try:
-            with open(HISTORICAL_DATA_PATH, 'r') as f:
-                snapshots = json.load(f)
-                if not isinstance(snapshots, list):
-                    return jsonify([])
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"[{datetime.now().isoformat()}] Error reading snapshots: {e}")
-            # Try to recover if this is an "Extra data" error
-            if "Extra data" in str(e):
-                try:
-                    with open(HISTORICAL_DATA_PATH, 'r') as f:
-                        content = f.read()
-                    last_bracket = content.rfind(']')
-                    if last_bracket > 0:
-                        valid_content = content[:last_bracket + 1]
-                        try:
-                            snapshots = json.loads(valid_content)
-                            if isinstance(snapshots, list):
-                                print(f"[{datetime.now().isoformat()}] Recovered {len(snapshots)} snapshots in get_snapshots")
-                                return jsonify(snapshots)
-                        except json.JSONDecodeError:
-                            pass
-                except Exception:
-                    pass
-            return jsonify([])
-
+        snapshots = read_snapshots_jsonl(HISTORICAL_DATA_PATH)
         return jsonify(snapshots)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/download/snapshots')
+def download_snapshots():
+    """Download all historical snapshot data as JSONL file"""
+    try:
+        if os.path.exists(HISTORICAL_DATA_PATH):
+            return send_file(
+                HISTORICAL_DATA_PATH,
+                mimetype='application/x-ndjson',
+                as_attachment=True,
+                download_name='il9cast_historical_data.jsonl'
+            )
+        else:
+            return jsonify({"error": "No data available"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -281,9 +347,6 @@ def collect_market_data():
     """Fetch market data and save snapshot automatically"""
     try:
         print(f"[{datetime.now().isoformat()}] Running automatic data collection...")
-
-        # First, validate and potentially repair the historical data file
-        validate_and_repair_data_file()
 
         # Fetch Manifold data
         manifold_data = {}
@@ -389,147 +452,20 @@ def collect_market_data():
                 'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
             }
 
-            # Ensure data directory exists
-            os.makedirs(os.path.dirname(HISTORICAL_DATA_PATH), exist_ok=True)
-
-            # Load existing snapshots with error handling
-            snapshots = []
-            if os.path.exists(HISTORICAL_DATA_PATH):
-                try:
-                    with open(HISTORICAL_DATA_PATH, 'r') as f:
-                        snapshots = json.load(f)
-                        # Ensure snapshots is a list
-                        if not isinstance(snapshots, list):
-                            print(f"[{datetime.now().isoformat()}] Invalid data format, resetting to empty list")
-                            snapshots = []
-                except (json.JSONDecodeError, IOError) as e:
-                    print(f"[{datetime.now().isoformat()}] Error loading snapshots: {e}, starting fresh")
-                    # Try to recover data if this is an "Extra data" error
-                    if "Extra data" in str(e):
-                        try:
-                            with open(HISTORICAL_DATA_PATH, 'r') as f:
-                                content = f.read()
-                            # Find the last complete JSON array
-                            last_bracket = content.rfind(']')
-                            if last_bracket > 0:
-                                valid_content = content[:last_bracket + 1]
-                                try:
-                                    snapshots = json.loads(valid_content)
-                                    if isinstance(snapshots, list):
-                                        print(f"[{datetime.now().isoformat()}] Recovered {len(snapshots)} snapshots from file with extra data")
-                                        # Save the repaired version
-                                        temp_path = HISTORICAL_DATA_PATH + '.tmp'
-                                        with open(temp_path, 'w') as repair_f:
-                                            json.dump(snapshots, repair_f, indent=2)
-                                        os.replace(temp_path, HISTORICAL_DATA_PATH)
-                                    else:
-                                        snapshots = []
-                                except json.JSONDecodeError:
-                                    snapshots = []
-                        except Exception as recovery_e:
-                            print(f"[{datetime.now().isoformat()}] Recovery failed: {recovery_e}")
-                            snapshots = []
-                    else:
-                        snapshots = []
-
-            # Append new snapshot
-            snapshots.append(snapshot)
-
-            # Save back to file with atomic write
-            temp_path = HISTORICAL_DATA_PATH + '.tmp'
+            # Append to JSONL file (atomic operation)
             try:
-                with open(temp_path, 'w') as f:
-                    json.dump(snapshots, f, indent=2)
-                # Atomic rename to prevent corruption
-                os.replace(temp_path, HISTORICAL_DATA_PATH)
+                append_snapshot_jsonl(HISTORICAL_DATA_PATH, snapshot)
+                total_count = count_snapshots_jsonl(HISTORICAL_DATA_PATH)
+                print(f"[{datetime.now().isoformat()}] Snapshot saved successfully. Total snapshots: {total_count}")
             except Exception as e:
-                print(f"[{datetime.now().isoformat()}] Error saving snapshots: {e}")
-                # Clean up temp file if it exists
-                if os.path.exists(temp_path):
-                    try:
-                        os.remove(temp_path)
-                    except:
-                        pass
+                print(f"[{datetime.now().isoformat()}] Error saving snapshot: {e}")
                 raise
 
-            print(f"[{datetime.now().isoformat()}] Snapshot saved successfully. Total snapshots: {len(snapshots)}")
         else:
             print(f"[{datetime.now().isoformat()}] No data collected from either API")
 
     except Exception as e:
         print(f"[{datetime.now().isoformat()}] Error in automatic data collection: {e}")
-
-def validate_and_repair_data_file():
-    """Validate the historical data file and repair if corrupted"""
-    try:
-        if not os.path.exists(HISTORICAL_DATA_PATH):
-            return
-            
-        # Try to read and parse the file
-        with open(HISTORICAL_DATA_PATH, 'r') as f:
-            try:
-                content = f.read()
-                data = json.loads(content)
-                # If we get here, the file is valid
-                return
-            except json.JSONDecodeError as e:
-                print(f"[{datetime.now().isoformat()}] JSON error in historical data: {e}")
-                
-                # Special handling for "Extra data" error - this means we have valid JSON
-                # followed by extra content. Try to find the valid JSON portion.
-                if "Extra data" in str(e):
-                    # Find the position where the error occurred
-                    error_pos = e.pos if hasattr(e, 'pos') else len(content) // 2
-                    
-                    # Try to parse just the content up to the error position
-                    try:
-                        partial_content = content[:error_pos]
-                        # Find the last complete JSON structure
-                        last_bracket = partial_content.rfind(']')
-                        if last_bracket > 0:
-                            valid_content = partial_content[:last_bracket + 1]
-                            data = json.loads(valid_content)
-                            if isinstance(data, list):
-                                print(f"[{datetime.now().isoformat()}] Recovered {len(data)} snapshots from file with extra data")
-                                # Save the valid portion
-                                with open(HISTORICAL_DATA_PATH, 'w') as repair_f:
-                                    json.dump(data, repair_f, indent=2)
-                                return
-                    except json.JSONDecodeError:
-                        pass
-                
-                # Try to find the last valid JSON object using line-by-line approach
-                lines = content.split('\n')
-                valid_data = []
-                current_obj = ""
-                
-                for line in lines:
-                    current_obj += line + "\n"
-                    try:
-                        obj = json.loads(current_obj.strip())
-                        if isinstance(obj, list):
-                            valid_data = obj
-                            break
-                        elif isinstance(obj, dict):
-                            valid_data.append(obj)
-                            current_obj = ""
-                    except json.JSONDecodeError:
-                        # Not a complete object yet, continue
-                        pass
-                
-                # If we found valid data, save it
-                if valid_data:
-                    print(f"[{datetime.now().isoformat()}] Recovered {len(valid_data)} snapshots from corrupted file")
-                    with open(HISTORICAL_DATA_PATH, 'w') as repair_f:
-                        json.dump(valid_data, repair_f, indent=2)
-                else:
-                    # File is completely corrupted, start fresh
-                    print(f"[{datetime.now().isoformat()}] Historical data file corrupted beyond repair, starting fresh")
-                    with open(HISTORICAL_DATA_PATH, 'w') as repair_f:
-                        json.dump([], repair_f)
-                        
-    except Exception as e:
-        print(f"[{datetime.now().isoformat()}] Error validating data file: {e}")
 
 def normalize_candidate_name(name):
     """Normalize candidate name for matching across platforms"""

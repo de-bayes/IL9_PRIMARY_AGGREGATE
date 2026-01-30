@@ -28,9 +28,13 @@ instance/
 .webassets-cache
 
 # Data files
-# historical_snapshots.json is runtime data (in Railway's persistent volume)
+# historical_snapshots.jsonl is runtime data (in Railway's persistent volume)
+# historical_snapshots.json is legacy format (being migrated to JSONL)
 # seed_snapshots.json is the git-tracked backup for initializing Railway
 data/historical_snapshots.json
+data/historical_snapshots.jsonl
+data/*.backup.*
+data/*.pre-*
 
 # Environment variables
 .env
