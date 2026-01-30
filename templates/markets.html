@@ -1,955 +1,890 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="IL9Cast - Prediction Markets">
+    <title>Prediction Markets - IL9Cast</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='landing-style.css') }}">
+</head>
+<body class="dark-mode">
+    <canvas id="grid-canvas"></canvas>
 
-{% block title %}Prediction Markets - IL9Cast{% endblock %}
+    <div class="site-content">
+        <header>
+            <a href="/" class="logo">IL9<span>Cast</span></a>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/markets" class="active">Markets</a>
+                <a href="/odds">Model</a>
+                <a href="/methodology">Methodology</a>
+                <a href="/about">About</a>
+            </nav>
+        </header>
 
-{% block content %}
-<div class="inner-page markets-page">
-    <div class="parallax-light warm-1" data-speed="0.12" data-direction="1"></div>
-    <div class="parallax-light warm-2" data-speed="0.08" data-direction="-1"></div>
-    <div class="parallax-light warm-3" data-speed="0.1" data-direction="-1"></div>
-    <div class="parallax-light warm-4" data-speed="0.09" data-direction="1" data-appear="400"></div>
-    <div class="parallax-light warm-5" data-speed="0.11" data-direction="-1" data-appear="600"></div>
-    <div class="warm-glow"></div>
+        <section class="hero">
+            <h1>Prediction Markets</h1>
+            <p class="subtitle">Aggregated odds from multiple prediction markets</p>
+        </section>
 
-    <nav class="inner-nav">
-        <a href="/" class="back-link">IL9Cast</a>
-        <div class="inner-nav-links">
-            <a href="/odds">The Model</a>
-            <a href="/markets" class="active">Markets</a>
-            <a href="/fundraising">Fundraising</a>
-            <a href="/methodology">Methodology</a>
-            <a href="/about">About</a>
-        </div>
-    </nav>
-
-    <div class="inner-content">
-        <h1 class="inner-title">Prediction Markets</h1>
-        <p class="page-subtitle">Aggregated odds from multiple prediction markets</p>
-
-        <section class="leader-featured" id="leaderFeatured">
-            <div class="leader-card">
-                <img src="" alt="" class="leader-photo" id="leaderPhoto">
-                <div class="leader-info">
-                    <span class="leader-label">LEADING CANDIDATE</span>
-                    <span class="leader-name" id="leaderName">Loading...</span>
-                    <div class="leader-main-stat">
-                        <span class="leader-main-label">Aggregate Probability</span>
-                        <span class="leader-main-value" id="leaderAggregate">--%</span>
-                    </div>
-                    <div class="leader-divider"></div>
-                    <div class="leader-sub-stats">
-                        <div class="leader-sub-stat">
-                            <span class="leader-sub-label">Manifold</span>
-                            <span class="leader-sub-value" id="leaderManifold">--%</span>
+        <section class="markets-content-page">
+            <section class="leader-featured" id="leaderFeatured">
+                <div class="leader-card">
+                    <img src="" alt="" class="leader-photo" id="leaderPhoto">
+                    <div class="leader-info">
+                        <span class="leader-label">LEADING CANDIDATE</span>
+                        <span class="leader-name" id="leaderName">Loading...</span>
+                        <div class="leader-main-stat">
+                            <span class="leader-main-label">Aggregate Probability</span>
+                            <span class="leader-main-value" id="leaderAggregate">--%</span>
                         </div>
-                        <div class="leader-sub-stat">
-                            <span class="leader-sub-label">Kalshi Last</span>
-                            <span class="leader-sub-value" id="leaderKalshiLast">--%</span>
-                        </div>
-                        <div class="leader-sub-stat">
-                            <span class="leader-sub-label">Kalshi Mid</span>
-                            <span class="leader-sub-value" id="leaderKalshiMid">--%</span>
-                        </div>
-                        <div class="leader-sub-stat">
-                            <span class="leader-sub-label">Kalshi Liq</span>
-                            <span class="leader-sub-value" id="leaderKalshiLiq">--%</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="big-odds-display" id="bigOddsDisplay">
-            <div class="big-odds-candidate">
-                <span class="big-percent">--</span>
-                <span class="big-name">Loading...</span>
-            </div>
-        </section>
-
-        <section class="market-chart-section">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2 style="margin: 0;">Market Trends</h2>
-                <div class="chart-toggle" id="chartToggle">
-                    <button class="toggle-btn" data-period="1d">1 Day</button>
-                    <button class="toggle-btn active" data-period="7d">7 Days</button>
-                    <button class="toggle-btn" data-period="all">All Time</button>
-                </div>
-            </div>
-            <div class="chart-wrapper">
-                <canvas id="marketTrendChart"></canvas>
-            </div>
-            <p class="chart-subtitle">Dashed lines indicate periods of data loss due to provider outages.</p>
-        </section>
-
-        <section class="weights-explainer methodology-section">
-            <div class="methodology-header" onclick="toggleMarketsMethodology()">
-                <h2 style="margin: 0;">Aggregation Methodology</h2>
-                <span class="toggle-icon" id="marketsMethodologyToggle">▼</span>
-            </div>
-            <div class="methodology-content hidden" id="marketsMethodologyContent">
-                <div class="weights-list">
-                <div class="weight-row">
-                    <span class="weight-title">Manifold Markets</span>
-                    <span class="weight-percentage">40%</span>
-                </div>
-                <div class="weight-row">
-                    <span class="weight-title">Kalshi (Last Price)</span>
-                    <span class="weight-percentage">42%</span>
-                </div>
-                <div class="weight-row">
-                    <span class="weight-title">Kalshi (Midpoint)</span>
-                    <span class="weight-percentage">12%</span>
-                </div>
-                <div class="weight-row">
-                    <span class="weight-title">Kalshi (Liquidity)</span>
-                    <span class="weight-percentage">6%</span>
-                </div>
-            </div>
-            <div class="methodology-note">
-                <p><strong>Why this approach?</strong> Kalshi's 60% weight emphasizes recent trade execution (70% of Kalshi weight → 42% overall) while incorporating midpoint (20% of Kalshi weight → 12%) and liquidity-weighted pricing (10% of Kalshi weight → 6%). This reflects that last trades show real money flow.</p>
-                <p style="margin-top: 0.8rem;"><strong>Why these weights?</strong> Manifold uses an AMM with liquidity banding that concentrates market-making capital around the current probability, making prices more responsive to trades near equilibrium but requiring larger trades to move prices significantly. Kalshi's real-money order book shows actual conviction through limit orders. Last price dominates because it reflects the most recent trades where people put capital at risk.</p>
-                <p style="margin-top: 0.8rem;"><strong>Why not rely solely on Kalshi's last price?</strong> Kalshi often has immensely wide bid-ask spreads (sometimes 10-20 percentage points), meaning the last completed trade may have occurred at an unrepresentative price. A market with a 45% bid / 55% ask and a last trade at 45% only demonstrates that someone was willing to sell at the bid—not that 45% is the accurate price. The true fair value likely sits somewhere in the middle of that spread, but Kalshi's order book structure means you only observe trades at the extremes when someone crosses the spread. Manifold has none of this problem: its AMM with liquidity banding provides instant, algorithmic two-way pricing with minimal spread, always reflecting current probability estimates without the friction of waiting for counterparties.</p>
-                <p style="margin-top: 0.8rem;"><strong>Liquidity-weighted pricing:</strong> Analyzes where the last trade occurred within Kalshi's bid-ask spread to capture buying vs selling pressure. Position near the ask (buyers aggressive) shifts the price up slightly; position near the bid (sellers aggressive) shifts down. Wider spreads dampen the adjustment. This only applies to Kalshi because it uses an order book exchange—Manifold's AMM algorithmically sets prices with liquidity banding that concentrates depth around current probabilities, so order book analysis doesn't apply. Manifold's continuous pricing eliminates the information gaps that plague order book exchanges with sparse liquidity.</p>
-            </div>
-            <div class="formula">
-                <strong>Formula:</strong> Aggregate = (0.40 × Manifold) + (0.42 × Last) + (0.12 × Midpoint) + (0.06 × Liquidity)
-
-                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-                    <strong>Sub-calculations:</strong><br>
-                    Midpoint = (yes_bid + yes_ask) / 2<br>
-                    <br>
-                    Liquidity = Midpoint + Shift<br>
-                    &nbsp;&nbsp;where Shift = offset × 6 × spread_factor<br>
-                    &nbsp;&nbsp;offset = (Last - yes_bid) / (yes_ask - yes_bid) - 0.5<br>
-                    &nbsp;&nbsp;spread_factor = max(0.2, 1 - spread/10 × 0.8)<br>
-                    &nbsp;&nbsp;spread = yes_ask - yes_bid<br>
-                    <br>
-                    Soft Normalization (30% strength):<br>
-                    &nbsp;&nbsp;Fully_Normalized = (Raw_Aggregate / Sum_All_Aggregates) × 100<br>
-                    &nbsp;&nbsp;Adjustment = Fully_Normalized - Raw_Aggregate<br>
-                    &nbsp;&nbsp;Final = Raw_Aggregate + (Adjustment × 0.30)
-                </div>
-            </div>
-            </div>
-        </section>
-
-        <section class="calculation-breakdown" id="calculationBreakdown">
-            <h2>Calculation Breakdown</h2>
-            <p class="breakdown-desc">Live formula application for each candidate</p>
-            <div id="breakdownContent"></div>
-            <p class="breakdown-desc" style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                <strong>*</strong> = No Kalshi market available. Uses 100% of Manifold probability. Probabilities are lightly normalized (30% strength) to prevent excessive drift while preserving raw market values for top candidates.
-            </p>
-        </section>
-
-        <section class="additional-markets">
-            <h2>Market Sources</h2>
-
-            <div class="expandable-market" id="manifoldMarket">
-                <button class="expand-toggle" onclick="toggleMarket('manifoldMarket')">
-                    <span class="market-name">Manifold Markets</span>
-                    <span class="market-preview" id="manifoldPreview">Loading...</span>
-                    <span class="expand-icon">+</span>
-                </button>
-                <div class="expand-content">
-                    <div class="market-candidates" id="manifoldCandidates">
-                        <div class="market-candidate">
-                            <span class="candidate-name">Loading...</span>
-                            <span class="candidate-odds">--</span>
+                        <div class="leader-divider"></div>
+                        <div class="leader-sub-stats">
+                            <div class="leader-sub-stat">
+                                <span class="leader-sub-label">Manifold</span>
+                                <span class="leader-sub-value" id="leaderManifold">--%</span>
+                            </div>
+                            <div class="leader-sub-stat">
+                                <span class="leader-sub-label">Kalshi Last</span>
+                                <span class="leader-sub-value" id="leaderKalshiLast">--%</span>
+                            </div>
+                            <div class="leader-sub-stat">
+                                <span class="leader-sub-label">Kalshi Mid</span>
+                                <span class="leader-sub-value" id="leaderKalshiMid">--%</span>
+                            </div>
+                            <div class="leader-sub-stat">
+                                <span class="leader-sub-label">Kalshi Liq</span>
+                                <span class="leader-sub-value" id="leaderKalshiLiq">--%</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="market-footer">
-                        <span class="last-updated" id="manifoldUpdated">Fetching data...</span>
-                        <a href="https://manifold.markets/JeromeHPowell/who-will-win-the-democratic-primary-RZdcps6dL9" target="_blank" class="market-link">View on Manifold →</a>
+                </div>
+            </section>
+
+            <section class="big-odds-display" id="bigOddsDisplay">
+                <div class="big-odds-candidate">
+                    <span class="big-percent">--</span>
+                    <span class="big-name">Loading...</span>
+                </div>
+            </section>
+
+            <section class="market-chart-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="margin: 0;">Market Trends</h2>
+                    <div class="chart-toggle" id="chartToggle">
+                        <button class="toggle-btn" data-period="1d">1 Day</button>
+                        <button class="toggle-btn active" data-period="7d">7 Days</button>
+                        <button class="toggle-btn" data-period="all">All Time</button>
                     </div>
                 </div>
-            </div>
+                <div class="chart-wrapper">
+                    <canvas id="marketTrendChart"></canvas>
+                </div>
+                <p class="chart-subtitle">Dashed lines indicate periods of data loss due to provider outages.</p>
+            </section>
 
-            <div class="expandable-market" id="kalshiMarket">
-                <button class="expand-toggle" onclick="toggleMarket('kalshiMarket')">
-                    <span class="market-name">Kalshi</span>
-                    <span class="market-preview" id="kalshiPreview">Loading...</span>
-                    <span class="expand-icon">+</span>
-                </button>
-                <div class="expand-content">
-                    <div class="market-candidates" id="kalshiCandidates">
-                        <div class="market-candidate">
-                            <span class="candidate-name">Loading...</span>
-                            <span class="candidate-odds">--</span>
+            <section class="weights-explainer methodology-section">
+                <div class="methodology-header" onclick="toggleMarketsMethodology()">
+                    <h2 style="margin: 0;">Aggregation Methodology</h2>
+                    <span class="toggle-icon" id="marketsMethodologyToggle">▼</span>
+                </div>
+                <div class="methodology-content hidden" id="marketsMethodologyContent">
+                    <div class="weights-list">
+                    <div class="weight-row">
+                        <span class="weight-title">Manifold Markets</span>
+                        <span class="weight-percentage">40%</span>
+                    </div>
+                    <div class="weight-row">
+                        <span class="weight-title">Kalshi (Last Price)</span>
+                        <span class="weight-percentage">42%</span>
+                    </div>
+                    <div class="weight-row">
+                        <span class="weight-title">Kalshi (Midpoint)</span>
+                        <span class="weight-percentage">12%</span>
+                    </div>
+                    <div class="weight-row">
+                        <span class="weight-title">Kalshi (Liquidity)</span>
+                        <span class="weight-percentage">6%</span>
+                    </div>
+                </div>
+                <div class="methodology-note">
+                    <p><strong>Why this approach?</strong> Kalshi's 60% weight emphasizes recent trade execution (70% of Kalshi weight → 42% overall) while incorporating midpoint (20% of Kalshi weight → 12%) and liquidity-weighted pricing (10% of Kalshi weight → 6%). This reflects that last trades show real money flow.</p>
+                    <p style="margin-top: 0.8rem;"><strong>Why these weights?</strong> Manifold uses an AMM with liquidity banding that concentrates market-making capital around the current probability, making prices more responsive to trades near equilibrium but requiring larger trades to move prices significantly. Kalshi's real-money order book shows actual conviction through limit orders. Last price dominates because it reflects the most recent trades where people put capital at risk.</p>
+                    <p style="margin-top: 0.8rem;"><strong>Why not rely solely on Kalshi's last price?</strong> Kalshi often has immensely wide bid-ask spreads (sometimes 10-20 percentage points), meaning the last completed trade may have occurred at an unrepresentative price. A market with a 45% bid / 55% ask and a last trade at 45% only demonstrates that someone was willing to sell at the bid—not that 45% is the accurate price. The true fair value likely sits somewhere in the middle of that spread, but Kalshi's order book structure means you only observe trades at the extremes when someone crosses the spread. Manifold has none of this problem: its AMM with liquidity banding provides instant, algorithmic two-way pricing with minimal spread, always reflecting current probability estimates without the friction of waiting for counterparties.</p>
+                    <p style="margin-top: 0.8rem;"><strong>Liquidity-weighted pricing:</strong> Analyzes where the last trade occurred within Kalshi's bid-ask spread to capture buying vs selling pressure. Position near the ask (buyers aggressive) shifts the price up slightly; position near the bid (sellers aggressive) shifts down. Wider spreads dampen the adjustment. This only applies to Kalshi because it uses an order book exchange—Manifold's AMM algorithmically sets prices with liquidity banding that concentrates depth around current probabilities, so order book analysis doesn't apply. Manifold's continuous pricing eliminates the information gaps that plague order book exchanges with sparse liquidity.</p>
+                </div>
+                <div class="formula">
+                    <strong>Formula:</strong> Aggregate = (0.40 × Manifold) + (0.42 × Last) + (0.12 × Midpoint) + (0.06 × Liquidity)
+
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                        <strong>Sub-calculations:</strong><br>
+                        Midpoint = (yes_bid + yes_ask) / 2<br>
+                        <br>
+                        Liquidity = Midpoint + Shift<br>
+                        &nbsp;&nbsp;where Shift = offset × 6 × spread_factor<br>
+                        &nbsp;&nbsp;offset = (Last - yes_bid) / (yes_ask - yes_bid) - 0.5<br>
+                        &nbsp;&nbsp;spread_factor = max(0.2, 1 - spread/10 × 0.8)<br>
+                        &nbsp;&nbsp;spread = yes_ask - yes_bid<br>
+                        <br>
+                        Soft Normalization (30% strength):<br>
+                        &nbsp;&nbsp;Fully_Normalized = (Raw_Aggregate / Sum_All_Aggregates) × 100<br>
+                        &nbsp;&nbsp;Adjustment = Fully_Normalized - Raw_Aggregate<br>
+                        &nbsp;&nbsp;Final = Raw_Aggregate + (Adjustment × 0.30)
+                    </div>
+                </div>
+                </div>
+            </section>
+
+            <section class="calculation-breakdown" id="calculationBreakdown">
+                <h2>Calculation Breakdown</h2>
+                <p class="breakdown-desc">Live formula application for each candidate</p>
+                <div id="breakdownContent"></div>
+                <p class="breakdown-desc" style="font-size: 0.85rem; color: #a0a0a0; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(230, 126, 34, 0.2);">
+                    <strong>*</strong> = No Kalshi market available. Uses 100% of Manifold probability. Probabilities are lightly normalized (30% strength) to prevent excessive drift while preserving raw market values for top candidates.
+                </p>
+            </section>
+
+            <section class="additional-markets">
+                <h2>Market Sources</h2>
+
+                <div class="expandable-market" id="manifoldMarket">
+                    <button class="expand-toggle" onclick="toggleMarket('manifoldMarket')">
+                        <span class="market-name">Manifold Markets</span>
+                        <span class="market-preview" id="manifoldPreview">Loading...</span>
+                        <span class="expand-icon">+</span>
+                    </button>
+                    <div class="expand-content">
+                        <div class="market-candidates" id="manifoldCandidates">
+                            <div class="market-candidate">
+                                <span class="candidate-name">Loading...</span>
+                                <span class="candidate-odds">--</span>
+                            </div>
+                        </div>
+                        <div class="market-footer">
+                            <span class="last-updated" id="manifoldUpdated">Fetching data...</span>
+                            <a href="https://manifold.markets/JeromeHPowell/who-will-win-the-democratic-primary-RZdcps6dL9" target="_blank" class="market-link">View on Manifold →</a>
                         </div>
                     </div>
-                    <div class="market-footer">
-                        <span class="last-updated" id="kalshiUpdated">Fetching data...</span>
-                        <a href="https://kalshi.com/markets/kxil9d/il-9-democratic-primary/kxil9d-26" target="_blank" class="market-link">View on Kalshi →</a>
+                </div>
+
+                <div class="expandable-market" id="kalshiMarket">
+                    <button class="expand-toggle" onclick="toggleMarket('kalshiMarket')">
+                        <span class="market-name">Kalshi</span>
+                        <span class="market-preview" id="kalshiPreview">Loading...</span>
+                        <span class="expand-icon">+</span>
+                    </button>
+                    <div class="expand-content">
+                        <div class="market-candidates" id="kalshiCandidates">
+                            <div class="market-candidate">
+                                <span class="candidate-name">Loading...</span>
+                                <span class="candidate-odds">--</span>
+                            </div>
+                        </div>
+                        <div class="market-footer">
+                            <span class="last-updated" id="kalshiUpdated">Fetching data...</span>
+                            <a href="https://kalshi.com/markets/kxil9d/il-9-democratic-primary/kxil9d-26" target="_blank" class="market-link">View on Kalshi →</a>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- Download Data Section -->
-        <section class="download-data-section">
-            <h2>Download Historical Data</h2>
-            <p class="download-description">Download the complete historical snapshot data (JSONL format)</p>
-            <a href="/api/download/snapshots" class="download-button" download>
-                <span class="download-icon">⬇</span>
-                Download Data (JSONL)
-            </a>
+            <!-- Download Data Section -->
+            <section class="download-data-section">
+                <h2>Download Historical Data</h2>
+                <p class="download-description">Download the complete historical snapshot data (JSONL format)</p>
+                <a href="/api/download/snapshots" class="download-button" download>
+                    <span class="download-icon">⬇</span>
+                    Download Data (JSONL)
+                </a>
+            </section>
         </section>
-
     </div>
-</div>
-
-<style scoped>
-.parallax-light {
-    position: fixed;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 0;
-    filter: blur(150px) contrast(1.05);
-    transition: transform 0.2s ease-out, opacity 0.3s ease-out;
-    mix-blend-mode: screen;
-    /* Dithering trick */
-    background-blend-mode: overlay;
-}
-
-.parallax-light.warm-1 {
-    bottom: -15%;
-    right: -10%;
-    width: 70%;
-    height: 70%;
-    background:
-        radial-gradient(ellipse at center,
-            hsla(25, 100%, 60%, 0.35) 0%,
-            hsla(25, 100%, 55%, 0.30) 8%,
-            hsla(24, 100%, 52%, 0.25) 16%,
-            hsla(23, 100%, 48%, 0.20) 24%,
-            hsla(22, 100%, 45%, 0.16) 32%,
-            hsla(21, 100%, 42%, 0.12) 40%,
-            hsla(20, 100%, 38%, 0.08) 50%,
-            hsla(19, 100%, 35%, 0.05) 60%,
-            hsla(18, 100%, 32%, 0.02) 72%,
-            transparent 85%);
-}
-
-.parallax-light.warm-2 {
-    top: 5%;
-    left: -15%;
-    width: 65%;
-    height: 65%;
-    background:
-        radial-gradient(ellipse at center,
-            hsla(22, 100%, 58%, 0.32) 0%,
-            hsla(21, 100%, 54%, 0.26) 10%,
-            hsla(20, 100%, 50%, 0.20) 20%,
-            hsla(19, 100%, 46%, 0.15) 32%,
-            hsla(18, 100%, 42%, 0.10) 45%,
-            hsla(17, 100%, 38%, 0.06) 58%,
-            hsla(16, 100%, 34%, 0.02) 72%,
-            transparent 88%);
-}
-
-.parallax-light.warm-3 {
-    bottom: 20%;
-    left: 40%;
-    width: 50%;
-    height: 50%;
-    background:
-        radial-gradient(ellipse at center,
-            hsla(28, 100%, 65%, 0.28) 0%,
-            hsla(26, 100%, 58%, 0.20) 15%,
-            hsla(24, 100%, 52%, 0.13) 30%,
-            hsla(22, 100%, 46%, 0.07) 48%,
-            hsla(20, 100%, 40%, 0.03) 65%,
-            transparent 85%);
-}
-
-.parallax-light.warm-4 {
-    top: 40%;
-    right: 10%;
-    width: 45%;
-    height: 45%;
-    opacity: 0;
-    background:
-        radial-gradient(ellipse at center,
-            hsla(24, 100%, 62%, 0.32) 0%,
-            hsla(22, 100%, 55%, 0.22) 18%,
-            hsla(20, 100%, 48%, 0.12) 38%,
-            hsla(18, 100%, 42%, 0.05) 58%,
-            transparent 80%);
-}
-
-.parallax-light.warm-5 {
-    bottom: 60%;
-    left: 20%;
-    width: 40%;
-    height: 40%;
-    opacity: 0;
-    background:
-        radial-gradient(ellipse at center,
-            hsla(30, 100%, 68%, 0.26) 0%,
-            hsla(27, 100%, 58%, 0.16) 22%,
-            hsla(24, 100%, 50%, 0.08) 45%,
-            hsla(21, 100%, 42%, 0.02) 68%,
-            transparent 88%);
-}
-
-.warm-glow {
-    position: fixed;
-    bottom: -30%;
-    right: -15%;
-    width: 60%;
-    height: 60%;
-    background: radial-gradient(ellipse at center,
-        rgba(255, 140, 60, 0.15) 0%,
-        rgba(255, 100, 40, 0.1) 20%,
-        rgba(255, 80, 30, 0.06) 40%,
-        rgba(255, 60, 20, 0.03) 60%,
-        transparent 80%);
-    filter: blur(80px);
-    pointer-events: none;
-    z-index: 0;
-}
-
-.inner-page {
-    position: relative;
-}
-
-.inner-nav, .inner-content {
-    position: relative;
-    z-index: 1;
-}
-
-.weights-explainer {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 0;
-    margin-bottom: 2.5rem;
-    margin-top: 2.5rem;
-}
-
-.methodology-section {
-    background: rgba(26, 26, 26, 0.5);
-    border: 2px solid rgba(58, 58, 58, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-}
-
-.methodology-header {
-    padding: 2rem;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: background 0.3s ease;
-}
-
-.methodology-header:hover {
-    background: rgba(0, 170, 220, 0.1);
-}
-
-.toggle-icon {
-    font-size: 1.5rem;
-    color: #00aadc;
-    transition: transform 0.3s ease;
-}
-
-.methodology-content {
-    padding: 0 2rem 2rem;
-    max-height: 3000px;
-    overflow: hidden;
-    transition: max-height 0.5s ease, padding 0.3s ease;
-}
-
-.methodology-content.hidden {
-    max-height: 0;
-    padding: 0 2rem;
-}
-
-.weights-explainer h2 {
-    margin-bottom: 1rem;
-    font-size: 1.3rem;
-    color: var(--text-primary);
-}
-
-.weights-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    background: rgba(0, 170, 220, 0.05);
-    border: 1px solid rgba(0, 170, 220, 0.15);
-    border-radius: 6px;
-}
-
-.weight-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-}
-
-.weight-title {
-    font-size: 0.95rem;
-    color: var(--text-primary);
-    font-weight: 500;
-}
-
-.weight-percentage {
-    font-size: 1.1rem;
-    font-weight: 700;
-    font-family: 'Times New Roman', Times, serif;
-    color: var(--accent-primary);
-    min-width: 50px;
-    text-align: right;
-}
-
-.methodology-note {
-    line-height: 1.7;
-    color: var(--text-secondary);
-    margin-bottom: 1.5rem;
-    padding: 1rem 1.25rem;
-    background: rgba(0, 170, 220, 0.08);
-    border-left: 3px solid rgba(0, 170, 220, 0.4);
-    border-radius: 4px;
-    font-size: 0.9rem;
-}
-
-.methodology-note p {
-    margin: 0;
-    color: var(--text-secondary);
-}
-
-.formula {
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    padding: 1rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-left: 3px solid var(--accent-primary);
-    border-radius: 4px;
-    margin: 0;
-    overflow-x: auto;
-}
-
-.big-odds-display {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 1rem;
-    margin: 2.5rem 0;
-    text-align: center;
-}
-
-.big-odds-candidate {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 1.5rem 0.5rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-}
-
-.leader-featured {
-    margin: 2rem 0 2.5rem 0;
-}
-
-.leader-card {
-    display: flex;
-    gap: 2rem;
-    padding: 2rem;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-}
-
-.leader-photo {
-    width: 140px;
-    height: 140px;
-    border-radius: 6px;
-    object-fit: cover;
-    flex-shrink: 0;
-    opacity: 0.95;
-}
-
-.leader-info {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    flex: 1;
-}
-
-.leader-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.15em;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
-}
-
-.leader-name {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    font-family: 'Times New Roman', Times, serif;
-    margin-bottom: 1rem;
-}
-
-.leader-main-stat {
-    margin-top: 0.5rem;
-}
-
-.leader-main-label {
-    display: block;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    margin-bottom: 0.25rem;
-}
-
-.leader-main-value {
-    font-size: 3.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    font-family: 'Times New Roman', Times, serif;
-    line-height: 1;
-}
-
-.leader-divider {
-    width: 100%;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.1);
-    margin: 1rem 0;
-}
-
-.leader-sub-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.25rem 2rem;
-}
-
-.leader-sub-stat {
-    display: flex;
-    flex-direction: column;
-}
-
-.leader-sub-label {
-    font-size: 0.6rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    margin-bottom: 0.2rem;
-    opacity: 0.7;
-}
-
-.leader-sub-value {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    font-family: 'Times New Roman', Times, serif;
-    line-height: 1;
-}
-
-@media (max-width: 600px) {
-    .leader-card {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 1.5rem;
-    }
-    .leader-photo {
-        width: 100px;
-        height: 100px;
-    }
-    .leader-name {
-        font-size: 1.6rem;
-    }
-    .leader-main-value {
-        font-size: 2.5rem;
-    }
-    .leader-sub-stats {
-        justify-content: center;
-        gap: 1rem 1.5rem;
-    }
-    .leader-sub-value {
-        font-size: 1.1rem;
-    }
-}
-
-.big-percent {
-    font-size: 3.5rem;
-    font-weight: 700;
-    font-family: 'Times New Roman', Times, serif;
-    color: var(--text-primary);
-    line-height: 1;
-    margin-bottom: 0.5rem;
-}
-
-.big-name {
-    font-size: 0.95rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-@media (max-width: 900px) {
-    .big-odds-display {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-@media (max-width: 500px) {
-    .big-odds-display {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    .big-percent {
-        font-size: 2.5rem;
-    }
-}
-
-.market-chart-section {
-    margin-top: 2.5rem;
-    padding: 2rem;
-    background: linear-gradient(180deg, rgba(0, 20, 40, 0.6) 0%, rgba(0, 10, 25, 0.8) 100%);
-    border: 1px solid rgba(0, 220, 255, 0.12);
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-}
-
-.chart-subtitle {
-    margin-top: 1rem;
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.4);
-    font-style: italic;
-    text-align: center;
-}
-
-.market-chart-section h2 {
-    margin-bottom: 1.5rem;
-    font-size: 1.3rem;
-    color: var(--text-primary);
-    font-family: 'Times New Roman', Times, serif;
-    font-weight: 400;
-}
-
-.market-chart-section .chart-wrapper {
-    height: 320px;
-    position: relative;
-    padding: 0.5rem 0;
-}
-
-.calculation-breakdown {
-    margin-top: 2.5rem;
-    padding: 2rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-}
-
-.calculation-breakdown h2 {
-    margin-bottom: 1rem;
-    font-size: 1.3rem;
-    color: var(--text-primary);
-}
-
-.breakdown-desc {
-    color: var(--text-secondary);
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-    line-height: 1.5;
-}
-
-.breakdown-desc:last-of-type {
-    margin-bottom: 1.5rem;
-    padding: 0.75rem 1rem;
-    background: rgba(0, 170, 220, 0.08);
-    border-left: 3px solid rgba(0, 170, 220, 0.4);
-    border-radius: 4px;
-    margin-left: 0;
-    font-size: 0.85rem;
-}
-
-.candidate-breakdown {
-    margin-bottom: 0.75rem;
-    background: rgba(0, 0, 0, 0.15);
-    border-left: 3px solid var(--accent-primary);
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-.breakdown-toggle {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem 1.5rem;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: var(--text-primary);
-    font-family: inherit;
-    text-align: left;
-    gap: 1rem;
-}
-
-.breakdown-toggle:hover {
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.breakdown-header {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    flex: 1;
-}
-
-.breakdown-preview {
-    font-size: 0.95rem;
-    color: var(--accent-primary);
-    font-weight: 700;
-    min-width: 60px;
-    text-align: right;
-}
-
-.breakdown-icon {
-    font-size: 1.5rem;
-    color: var(--accent-primary);
-    transition: transform 0.3s ease;
-}
-
-.candidate-breakdown.open .breakdown-icon {
-    transform: rotate(45deg);
-}
-
-.breakdown-details {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease, padding 0.3s ease;
-    padding: 0 1.5rem;
-}
-
-.candidate-breakdown.open .breakdown-details {
-    max-height: 400px;
-    padding: 0 1.5rem 1.5rem;
-}
-
-.breakdown-line {
-    font-size: 0.85rem;
-    line-height: 1.6;
-    color: var(--text-secondary);
-    margin-bottom: 0.4rem;
-}
-
-.breakdown-line strong {
-    color: var(--text-primary);
-    font-weight: 600;
-}
-
-.breakdown-result {
-    margin-top: 0.8rem;
-    padding-top: 0.8rem;
-    border-top: 1px solid rgba(0, 170, 220, 0.2);
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--accent-primary);
-}
-
-.additional-markets {
-    margin-top: 2.5rem;
-}
-
-.additional-markets h2 {
-    margin-bottom: 1rem;
-    font-size: 1.3rem;
-    color: var(--text-primary);
-}
-
-.expandable-market {
-    margin-bottom: 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    overflow: hidden;
-    background: var(--bg-card);
-}
-
-.expand-toggle {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.25rem 1.5rem;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: var(--text-primary);
-    font-family: inherit;
-    font-size: 1rem;
-    transition: background 0.2s ease;
-    gap: 2rem;
-}
-
-.expand-toggle:hover {
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.market-name {
-    font-weight: 600;
-    font-size: 0.95rem;
-    min-width: 140px;
-}
-
-.market-preview {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    flex: 1;
-    text-align: left;
-}
-
-.expand-icon {
-    font-size: 1.5rem;
-    color: var(--accent-primary);
-    transition: transform 0.3s ease;
-}
-
-.expandable-market.open .expand-icon {
-    transform: rotate(45deg);
-}
-
-.expand-content {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease, padding 0.3s ease;
-    padding: 0 1.5rem;
-}
-
-.expandable-market.open .expand-content {
-    max-height: 500px;
-    padding: 1rem 1.5rem 1.5rem;
-    border-top: 1px solid var(--border-color);
-}
-
-.expand-content .market-candidates {
-    margin-bottom: 1rem;
-}
-
-.expand-content .market-candidate {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.6rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.expand-content .market-candidate:last-child {
-    border-bottom: none;
-}
-
-.expand-content .market-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border-color);
-    margin-top: 0.5rem;
-}
-
-.market-link {
-    color: var(--accent-primary);
-    text-decoration: none;
-    font-size: 0.9rem;
-}
-
-.market-link:hover {
-    text-decoration: underline;
-}
-
-.chart-toggle {
-    display: flex;
-    gap: 0.25rem;
-    background: rgba(0, 0, 0, 0.3);
-    padding: 4px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.toggle-btn {
-    padding: 0.5rem 1.25rem;
-    background: transparent;
-    border: none;
-    color: rgba(255, 255, 255, 0.5);
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 500;
-    font-family: 'Times New Roman', Times, serif;
-    transition: all 0.25s ease;
-}
-
-.toggle-btn:hover {
-    color: rgba(255, 255, 255, 0.8);
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.toggle-btn.active {
-    background: rgba(0, 220, 255, 0.15);
-    color: #00DCFF;
-    box-shadow: 0 0 12px rgba(0, 220, 255, 0.2);
-}
-
-.download-data-section {
-    margin-top: 2.5rem;
-    padding: 2rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    text-align: center;
-}
-
-.download-data-section h2 {
-    margin-bottom: 0.5rem;
-    font-size: 1.3rem;
-    color: var(--text-primary);
-}
-
-.download-description {
-    margin-bottom: 1.5rem;
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-}
-
-.download-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #0066CC 0%, #0088FF 100%);
-    color: white;
-    text-decoration: none;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    border: none;
-    cursor: pointer;
-}
-
-.download-button:hover {
-    background: linear-gradient(135deg, #0055AA 0%, #0077EE 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
-}
-
-.download-icon {
-    font-size: 1.2rem;
-}
-</style>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-<script>
+
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        .markets-content-page {
+            max-width: 900px;
+            margin: 0 auto 4rem;
+            padding: 0 2rem;
+        }
+
+        /* Leader Featured Card */
+        .leader-featured {
+            margin: 0 0 2rem 0;
+        }
+
+        .leader-card {
+            display: flex;
+            gap: 2rem;
+            padding: 2.5rem;
+            background: rgba(26, 26, 26, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(230, 126, 34, 0.5);
+            border-radius: 12px;
+        }
+
+        .leader-photo {
+            width: 140px;
+            height: 140px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+            opacity: 0.95;
+        }
+
+        .leader-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .leader-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .leader-name {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: #e0e0e0;
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            margin-bottom: 1rem;
+        }
+
+        .leader-main-stat {
+            margin-top: 0.5rem;
+        }
+
+        .leader-main-label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+
+        .leader-main-value {
+            font-size: 3.5rem;
+            font-weight: 600;
+            color: #e67e22;
+            font-family: 'VT323', monospace;
+            line-height: 1;
+        }
+
+        .leader-divider {
+            width: 100%;
+            height: 1px;
+            background: rgba(230, 126, 34, 0.2);
+            margin: 1rem 0;
+        }
+
+        .leader-sub-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.25rem 2rem;
+        }
+
+        .leader-sub-stat {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .leader-sub-label {
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            margin-bottom: 0.2rem;
+            opacity: 0.7;
+        }
+
+        .leader-sub-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #c0c0c0;
+            font-family: 'VT323', monospace;
+            line-height: 1;
+        }
+
+        @media (max-width: 600px) {
+            .leader-card {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                padding: 1.5rem;
+            }
+            .leader-photo {
+                width: 100px;
+                height: 100px;
+            }
+            .leader-name {
+                font-size: 1.6rem;
+            }
+            .leader-main-value {
+                font-size: 2.5rem;
+            }
+            .leader-sub-stats {
+                justify-content: center;
+                gap: 1rem 1.5rem;
+            }
+            .leader-sub-value {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Odds Grid */
+        .big-odds-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin: 0 0 2rem 0;
+            text-align: center;
+        }
+
+        .big-odds-candidate {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.5rem 0.5rem;
+            background: rgba(26, 26, 26, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(230, 126, 34, 0.3);
+            border-radius: 12px;
+        }
+
+        .big-percent {
+            font-size: 3.5rem;
+            font-weight: 600;
+            font-family: 'VT323', monospace;
+            color: #e67e22;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .big-name {
+            font-size: 0.95rem;
+            color: #a0a0a0;
+            font-weight: 500;
+        }
+
+        @media (max-width: 900px) {
+            .big-odds-display {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .big-odds-display {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .big-percent {
+                font-size: 2.5rem;
+            }
+        }
+
+        /* Chart Section */
+        .market-chart-section {
+            padding: 2rem;
+            background: rgba(26, 26, 26, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(230, 126, 34, 0.3);
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .chart-subtitle {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+            font-style: italic;
+            text-align: center;
+        }
+
+        .market-chart-section h2 {
+            margin-bottom: 1.5rem;
+            font-size: 1.6rem;
+            color: #e67e22;
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-weight: 600;
+        }
+
+        .market-chart-section .chart-wrapper {
+            height: 320px;
+            position: relative;
+            padding: 0.5rem 0;
+        }
+
+        .chart-toggle {
+            display: flex;
+            gap: 0.25rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid rgba(230, 126, 34, 0.15);
+        }
+
+        .toggle-btn {
+            padding: 0.5rem 1.25rem;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            transition: all 0.25s ease;
+        }
+
+        .toggle-btn:hover {
+            color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .toggle-btn.active {
+            background: rgba(230, 126, 34, 0.2);
+            color: #e67e22;
+            box-shadow: 0 0 12px rgba(230, 126, 34, 0.15);
+        }
+
+        /* Methodology Foldout */
+        .weights-explainer {
+            background: rgba(26, 26, 26, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(230, 126, 34, 0.3);
+            border-radius: 12px;
+            padding: 0;
+            margin-bottom: 2rem;
+        }
+
+        .methodology-header {
+            padding: 2rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s ease;
+        }
+
+        .methodology-header:hover {
+            background: rgba(230, 126, 34, 0.1);
+        }
+
+        .methodology-header h2 {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 2rem;
+            color: #e67e22;
+        }
+
+        .toggle-icon {
+            font-size: 1.5rem;
+            color: #e67e22;
+            transition: transform 0.3s ease;
+        }
+
+        .methodology-content {
+            padding: 0 2rem 2rem;
+            max-height: 3000px;
+            overflow: hidden;
+            transition: max-height 0.5s ease, padding 0.3s ease;
+        }
+
+        .methodology-content.hidden {
+            max-height: 0;
+            padding: 0 2rem;
+        }
+
+        .weights-explainer h2 {
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+            color: #e0e0e0;
+        }
+
+        .weights-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(230, 126, 34, 0.05);
+            border: 1px solid rgba(230, 126, 34, 0.15);
+            border-radius: 6px;
+        }
+
+        .weight-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+        }
+
+        .weight-title {
+            font-size: 0.95rem;
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        .weight-percentage {
+            font-size: 1.1rem;
+            font-weight: 700;
+            font-family: 'VT323', monospace;
+            color: #e67e22;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        .methodology-note {
+            line-height: 1.7;
+            color: #c0c0c0;
+            margin-bottom: 1.5rem;
+            padding: 1rem 1.25rem;
+            background: rgba(230, 126, 34, 0.08);
+            border-left: 3px solid rgba(230, 126, 34, 0.4);
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .methodology-note p {
+            margin: 0;
+            color: #c0c0c0;
+        }
+
+        .formula {
+            font-family: 'VT323', monospace;
+            font-size: 1rem;
+            color: #e0e0e0;
+            padding: 1.5rem;
+            background: rgba(230, 126, 34, 0.1);
+            border-left: 4px solid #e67e22;
+            border-radius: 4px;
+            margin: 0;
+            overflow-x: auto;
+        }
+
+        /* Calculation Breakdown */
+        .calculation-breakdown {
+            padding: 2.5rem;
+            background: rgba(26, 26, 26, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(230, 126, 34, 0.3);
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .calculation-breakdown h2 {
+            margin-bottom: 1rem;
+            font-size: 2rem;
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-weight: 600;
+            color: #e67e22;
+        }
+
+        .breakdown-desc {
+            color: #a0a0a0;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .breakdown-desc:last-of-type {
+            margin-bottom: 1.5rem;
+            padding: 0.75rem 1rem;
+            background: rgba(230, 126, 34, 0.08);
+            border-left: 3px solid rgba(230, 126, 34, 0.4);
+            border-radius: 4px;
+            margin-left: 0;
+            font-size: 0.85rem;
+        }
+
+        .candidate-breakdown {
+            margin-bottom: 0.75rem;
+            background: rgba(0, 0, 0, 0.15);
+            border-left: 3px solid #e67e22;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .breakdown-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: #e0e0e0;
+            font-family: inherit;
+            text-align: left;
+            gap: 1rem;
+        }
+
+        .breakdown-toggle:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .breakdown-header {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #e0e0e0;
+            flex: 1;
+        }
+
+        .breakdown-preview {
+            font-size: 0.95rem;
+            color: #e67e22;
+            font-weight: 700;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .breakdown-icon {
+            font-size: 1.5rem;
+            color: #e67e22;
+            transition: transform 0.3s ease;
+        }
+
+        .candidate-breakdown.open .breakdown-icon {
+            transform: rotate(45deg);
+        }
+
+        .breakdown-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            padding: 0 1.5rem;
+        }
+
+        .candidate-breakdown.open .breakdown-details {
+            max-height: 400px;
+            padding: 0 1.5rem 1.5rem;
+        }
+
+        .breakdown-line {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #a0a0a0;
+            margin-bottom: 0.4rem;
+        }
+
+        .breakdown-line strong {
+            color: #e0e0e0;
+            font-weight: 600;
+        }
+
+        .breakdown-result {
+            margin-top: 0.8rem;
+            padding-top: 0.8rem;
+            border-top: 1px solid rgba(230, 126, 34, 0.2);
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #e67e22;
+        }
+
+        /* Market Sources */
+        .additional-markets {
+            margin-bottom: 2rem;
+        }
+
+        .additional-markets h2 {
+            margin-bottom: 1rem;
+            font-size: 2rem;
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-weight: 600;
+            color: #e67e22;
+        }
+
+        .expandable-market {
+            margin-bottom: 1rem;
+            border: 2px solid rgba(230, 126, 34, 0.3);
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(26, 26, 26, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .expand-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem 1.5rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: #e0e0e0;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: background 0.2s ease;
+            gap: 2rem;
+        }
+
+        .expand-toggle:hover {
+            background: rgba(230, 126, 34, 0.1);
+        }
+
+        .market-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            min-width: 140px;
+        }
+
+        .market-preview {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+            flex: 1;
+            text-align: left;
+        }
+
+        .expand-icon {
+            font-size: 1.5rem;
+            color: #e67e22;
+            transition: transform 0.3s ease;
+        }
+
+        .expandable-market.open .expand-icon {
+            transform: rotate(45deg);
+        }
+
+        .expand-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            padding: 0 1.5rem;
+        }
+
+        .expandable-market.open .expand-content {
+            max-height: 500px;
+            padding: 1rem 1.5rem 1.5rem;
+            border-top: 1px solid rgba(230, 126, 34, 0.2);
+        }
+
+        .expand-content .market-candidates {
+            margin-bottom: 1rem;
+        }
+
+        .expand-content .market-candidate {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .expand-content .market-candidate:last-child {
+            border-bottom: none;
+        }
+
+        .expand-content .market-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(230, 126, 34, 0.2);
+            margin-top: 0.5rem;
+        }
+
+        .market-link {
+            color: #e67e22;
+            text-decoration: underline;
+            font-size: 0.9rem;
+        }
+
+        .market-link:hover {
+            opacity: 0.8;
+        }
+
+        /* Download Section */
+        .download-data-section {
+            padding: 2.5rem;
+            background: rgba(26, 26, 26, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(230, 126, 34, 0.3);
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .download-data-section h2 {
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-weight: 600;
+            color: #e67e22;
+        }
+
+        .download-description {
+            margin-bottom: 1.5rem;
+            color: #a0a0a0;
+            font-size: 0.95rem;
+        }
+
+        .download-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .download-button:hover {
+            background: linear-gradient(135deg, #d35400 0%, #c0392b 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+        }
+
+        .download-icon {
+            font-size: 1.2rem;
+        }
+
+        .last-updated {
+            color: #a0a0a0;
+            font-size: 0.85rem;
+        }
+
+        .candidate-odds {
+            color: #e67e22;
+            font-weight: 600;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script>
 function toggleMarketsMethodology() {
     const content = document.getElementById('marketsMethodologyContent');
     const icon = document.getElementById('marketsMethodologyToggle');
@@ -1179,18 +1114,18 @@ function renderBreakdown(breakdowns) {
                     = ${b.manifoldContribution} + ${b.kalshiLastContribution} + ${b.kalshiMidContribution} + ${b.kalshiLiqContribution}
                 </div>
                 <div class="breakdown-result">= ${b.aggregate}%</div>
-                ${b.normalizedAggregate ? `<div class="breakdown-line" style="margin-top: 0.5rem; color: var(--text-secondary);"><strong>Soft Normalized (30%):</strong> ${b.normalizedAggregate}%</div>` : ''}
+                ${b.normalizedAggregate ? `<div class="breakdown-line" style="margin-top: 0.5rem; color: #a0a0a0;"><strong>Soft Normalized (30%):</strong> ${b.normalizedAggregate}%</div>` : ''}
             `;
         } else {
             calculationHTML = `
                 <div class="breakdown-line"><strong>Manifold:</strong> ${b.manifoldProb}%</div>
-                <div class="breakdown-line" style="color: var(--text-secondary);"><strong>Kalshi:</strong> No market available</div>
+                <div class="breakdown-line" style="color: #a0a0a0;"><strong>Kalshi:</strong> No market available</div>
                 <div class="breakdown-line" style="margin-top: 0.8rem;">
                     <strong>Calculation:</strong><br>
                     Using 100% of Manifold probability (no Kalshi data)<br>
                     = ${b.manifoldProb}%
                 </div>
-                ${b.normalizedAggregate ? `<div class="breakdown-line" style="margin-top: 0.5rem; color: var(--text-secondary);"><strong>Soft Normalized (30%):</strong> ${b.normalizedAggregate}%<br><em style="font-size: 0.85em;">Light normalization applied to prevent drift while preserving market values.</em></div>` : ''}
+                ${b.normalizedAggregate ? `<div class="breakdown-line" style="margin-top: 0.5rem; color: #a0a0a0;"><strong>Soft Normalized (30%):</strong> ${b.normalizedAggregate}%<br><em style="font-size: 0.85em;">Light normalization applied to prevent drift while preserving market values.</em></div>` : ''}
             `;
         }
 
@@ -1258,7 +1193,7 @@ async function fetchManifoldData() {
 
     } catch (error) {
         console.error('Error fetching Manifold data:', error);
-        document.getElementById('bigOddsDisplay').innerHTML = '<p style="color: var(--text-secondary);">Error loading market data</p>';
+        document.getElementById('bigOddsDisplay').innerHTML = '<p style="color: #a0a0a0;">Error loading market data</p>';
     }
 }
 
@@ -1703,7 +1638,7 @@ async function fetchKalshiData() {
     } catch (error) {
         console.error('Error fetching Kalshi data:', error);
         document.getElementById('kalshiPreview').textContent = 'Error loading';
-        document.getElementById('kalshiCandidates').innerHTML = '<p style="color: var(--text-secondary);">Error loading Kalshi data</p>';
+        document.getElementById('kalshiCandidates').innerHTML = '<p style="color: #a0a0a0;">Error loading Kalshi data</p>';
     }
 }
 
@@ -1777,11 +1712,6 @@ function setupPolling() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const navbar = document.querySelector('.navbar');
-    const footer = document.querySelector('.footer');
-    if (navbar) navbar.style.display = 'none';
-    if (footer) footer.style.display = 'none';
-
     // Set up chart toggle buttons
     document.querySelectorAll('.toggle-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
@@ -1796,35 +1726,100 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Parallax light effect on scroll
-    const parallaxLights = document.querySelectorAll('.parallax-light');
+    setupPolling();
+});
+    </script>
 
-    window.addEventListener('scroll', () => {
-        const scrollY = window.pageYOffset;
+    <!-- GRID BACKGROUND -->
+    <script>
+        const canvas = document.getElementById('grid-canvas');
+        const ctx = canvas.getContext('2d');
+        let mouseX = -1000, mouseY = -1000;
+        let targetMouseX = -1000, targetMouseY = -1000;
+        const gridSize = 40, influence = 280, maxDisplacement = 15, smoothing = 0.06;
+        let pointsState = null;
 
-        parallaxLights.forEach(light => {
-            const speed = parseFloat(light.dataset.speed) || 0.3;
-            const direction = parseInt(light.dataset.direction) || 1;
-            const appearAt = parseInt(light.dataset.appear) || 0;
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            pointsState = null;
+        }
 
-            // Handle appearing lights
-            if (appearAt > 0) {
-                if (scrollY > appearAt) {
-                    light.style.opacity = Math.min(1, (scrollY - appearAt) / 200);
-                } else {
-                    light.style.opacity = 0;
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        document.addEventListener('mousemove', (e) => {
+            targetMouseX = e.clientX;
+            targetMouseY = e.clientY;
+        });
+
+        document.addEventListener('mouseleave', () => {
+            targetMouseX = targetMouseY = -1000;
+        });
+
+        function drawGrid() {
+            mouseX += (targetMouseX - mouseX) * smoothing;
+            mouseY += (targetMouseY - mouseY) * smoothing;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+            const cols = Math.ceil(canvas.width / gridSize) + 1;
+            const rows = Math.ceil(canvas.height / gridSize) + 1;
+
+            if (!pointsState || pointsState.length !== rows + 1) {
+                pointsState = [];
+                for (let row = 0; row <= rows; row++) {
+                    pointsState[row] = [];
+                    for (let col = 0; col <= cols; col++) {
+                        pointsState[row][col] = { x: col * gridSize, y: row * gridSize };
+                    }
                 }
             }
 
-            // Move horizontally and vertically based on scroll (subtle)
-            const moveX = scrollY * speed * direction * 0.5;
-            const moveY = scrollY * speed * direction * -0.2;
+            for (let row = 0; row <= rows; row++) {
+                for (let col = 0; col <= cols; col++) {
+                    const baseX = col * gridSize, baseY = row * gridSize;
+                    let targetX = baseX, targetY = baseY;
+                    const dx = baseX - mouseX, dy = baseY - mouseY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
 
-            light.style.transform = `translate(${moveX}px, ${moveY}px)`;
-        });
-    });
+                    if (dist < influence && dist > 0) {
+                        const falloff = 1 - dist / influence;
+                        const force = falloff * falloff * falloff * maxDisplacement;
+                        const angle = Math.atan2(dy, dx);
+                        targetX = baseX + Math.cos(angle) * force;
+                        targetY = baseY + Math.sin(angle) * force;
+                    }
 
-    setupPolling();
-});
-</script>
-{% endblock %}
+                    pointsState[row][col].x += (targetX - pointsState[row][col].x) * 0.06;
+                    pointsState[row][col].y += (targetY - pointsState[row][col].y) * 0.06;
+                }
+            }
+
+            for (let row = 0; row <= rows; row++) {
+                ctx.beginPath();
+                ctx.moveTo(pointsState[row][0].x, pointsState[row][0].y);
+                for (let col = 1; col <= cols; col++) {
+                    const prev = pointsState[row][col - 1], curr = pointsState[row][col];
+                    ctx.quadraticCurveTo(prev.x, prev.y, (prev.x + curr.x) / 2, (prev.y + curr.y) / 2);
+                }
+                ctx.stroke();
+            }
+
+            for (let col = 0; col <= cols; col++) {
+                ctx.beginPath();
+                ctx.moveTo(pointsState[0][col].x, pointsState[0][col].y);
+                for (let row = 1; row <= rows; row++) {
+                    const prev = pointsState[row - 1][col], curr = pointsState[row][col];
+                    ctx.quadraticCurveTo(prev.x, prev.y, (prev.x + curr.x) / 2, (prev.y + curr.y) / 2);
+                }
+                ctx.stroke();
+            }
+
+            requestAnimationFrame(drawGrid);
+        }
+
+        drawGrid();
+    </script>
+</body>
+</html>
