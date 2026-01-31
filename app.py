@@ -416,13 +416,13 @@ def get_snapshots_chart():
     Return RDP-simplified snapshots for chart rendering.
     Params:
       period: '1d', '7d', 'all' (default 'all')
-      epsilon: RDP tolerance (default 0.3)
+      epsilon: RDP tolerance (default 0.5)
     Returns ~200-400 points instead of 5000+ raw.
     """
     global _chart_cache
     try:
         period = request.args.get('period', 'all')
-        epsilon = float(request.args.get('epsilon', '0.3'))
+        epsilon = float(request.args.get('epsilon', '0.5'))
         cache_key = f'{period}:{epsilon}'
 
         # 60-second cache
@@ -545,13 +545,60 @@ def download_snapshots():
 
 # Background task to collect data every 3 minutes
 # Reduces over-sampling and ensures clean 3-minute intervals
+# Includes spike dampening to prevent chart artifacts
+
+# Maximum percentage-point change allowed per 3-minute interval per candidate
+MAX_CHANGE_PER_INTERVAL = 5.0
+
+# In-memory cache of last successful snapshot for spike dampening and API fallback
+_last_snapshot = None
+
+def _get_last_snapshot():
+    """Get the most recent snapshot for spike dampening comparison."""
+    global _last_snapshot
+    if _last_snapshot is not None:
+        return _last_snapshot
+    # Load from file on first run
+    try:
+        snapshots = read_snapshots_jsonl(HISTORICAL_DATA_PATH)
+        if snapshots:
+            _last_snapshot = snapshots[-1]
+            return _last_snapshot
+    except Exception:
+        pass
+    return None
+
+def _dampen_spikes(aggregated):
+    """
+    Prevent sudden spikes by capping per-candidate change to MAX_CHANGE_PER_INTERVAL.
+    Compares new values against the previous snapshot and clamps large jumps.
+    """
+    prev = _get_last_snapshot()
+    if not prev:
+        return aggregated  # No previous data, allow any values
+
+    prev_by_name = {c['name']: c['probability'] for c in prev.get('candidates', [])}
+
+    for c in aggregated:
+        if c['name'] in prev_by_name:
+            prev_prob = prev_by_name[c['name']]
+            delta = c['probability'] - prev_prob
+            if abs(delta) > MAX_CHANGE_PER_INTERVAL:
+                clamped = prev_prob + (MAX_CHANGE_PER_INTERVAL if delta > 0 else -MAX_CHANGE_PER_INTERVAL)
+                print(f"  [Spike dampened] {c['name']}: {c['probability']:.1f}% -> {clamped:.1f}% (was {delta:+.1f}% change)")
+                c['probability'] = clamped
+
+    return aggregated
+
 def collect_market_data():
     """Fetch market data and save snapshot automatically"""
+    global _last_snapshot
     try:
         print(f"[{datetime.now().isoformat()}] Running automatic data collection...")
 
         # Fetch Manifold data
         manifold_data = {}
+        manifold_ok = False
         try:
             manifold_response = requests.get('https://api.manifold.markets/v0/slug/who-will-win-the-democratic-primary-RZdcps6dL9', timeout=10)
             manifold_response.raise_for_status()
@@ -565,11 +612,13 @@ def collect_market_data():
                         'probability': round(answer.get('probability', 0) * 100, 1),
                         'displayName': answer.get('text', '')
                     }
+            manifold_ok = True
         except Exception as e:
             print(f"Error fetching Manifold data: {e}")
 
         # Fetch Kalshi data
         kalshi_data = {}
+        kalshi_ok = False
         try:
             kalshi_response = requests.get('https://api.elections.kalshi.com/trade-api/v2/markets?series_ticker=KXIL9D&status=open', timeout=10)
             kalshi_response.raise_for_status()
@@ -601,8 +650,20 @@ def collect_market_data():
                         'liquidity': liquidity_price,
                         'displayName': display_name
                     }
+            kalshi_ok = True
         except Exception as e:
             print(f"Error fetching Kalshi data: {e}")
+
+        # If both APIs failed, skip this interval entirely (no bad data)
+        if not manifold_ok and not kalshi_ok:
+            print(f"[{datetime.now().isoformat()}] Both APIs failed - skipping snapshot to avoid bad data")
+            return
+
+        # If only one API failed, log a warning (spike dampening will handle it)
+        if not manifold_ok:
+            print(f"  [Warning] Manifold API failed - using Kalshi-only data (dampened)")
+        if not kalshi_ok:
+            print(f"  [Warning] Kalshi API failed - using Manifold-only data (dampened)")
 
         # Calculate aggregated probabilities
         if manifold_data or kalshi_data:
@@ -641,6 +702,9 @@ def collect_market_data():
                     adjustment = fully_normalized - c['probability']
                     c['probability'] = c['probability'] + (adjustment * 0.30)
 
+            # Spike dampening: cap per-candidate change to prevent chart artifacts
+            aggregated = _dampen_spikes(aggregated)
+
             aggregated.sort(key=lambda x: x['probability'], reverse=True)
 
             # Save snapshot with UTC timestamp (Z suffix marks it as UTC)
@@ -656,6 +720,7 @@ def collect_market_data():
             # Append to JSONL file (atomic operation)
             try:
                 append_snapshot_jsonl(HISTORICAL_DATA_PATH, snapshot)
+                _last_snapshot = snapshot  # Update in-memory cache
                 total_count = count_snapshots_jsonl(HISTORICAL_DATA_PATH)
                 print(f"[{datetime.now().isoformat()}] Snapshot saved successfully. Total snapshots: {total_count}")
             except Exception as e:

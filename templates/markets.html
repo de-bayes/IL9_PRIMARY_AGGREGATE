@@ -85,7 +85,8 @@
                     <canvas id="marketTrendChart"></canvas>
                 </div>
                 <p class="chart-subtitle">
-                    Dashed lines indicate periods of data loss due to Railway or AWS outages.
+                    We have data upon request from Jan 15 to 30, but some AWS volume issues
+                    prevented us from displaying it. The graph has data from Jan 30 and on.
                     All times displayed in Central Time (CT).
                 </p>
             </section>
@@ -1300,7 +1301,7 @@ async function renderMarketTrendChart(candidates) {
     // Fetch RDP-simplified data from backend
     let chartData = {};
     try {
-        const response = await fetch(`/api/snapshots/chart?period=${period}&epsilon=0.3`);
+        const response = await fetch(`/api/snapshots/chart?period=${period}&epsilon=0.5`);
         chartData = await response.json();
     } catch (error) {
         console.error('Error fetching chart data:', error);
