@@ -722,10 +722,17 @@ def collect_market_data():
                     last_price = market.get('last_price', 0)
                     yes_bid = market.get('yes_bid', 0)
                     yes_ask = market.get('yes_ask', 0)
-                    midpoint = (yes_bid + yes_ask) / 2
+
+                    # Only compute a real midpoint when both sides have orders.
+                    # If yes_bid is 0 (no buy-side interest), the midpoint between
+                    # 0 and the ask is meaningless — fall back to last_price.
+                    if yes_bid > 0 and yes_ask > 0:
+                        midpoint = (yes_bid + yes_ask) / 2
+                    else:
+                        midpoint = last_price
 
                     # Calculate liquidity-weighted price
-                    spread = yes_ask - yes_bid
+                    spread = yes_ask - yes_bid if (yes_bid > 0 and yes_ask > 0) else 0
                     liquidity_price = midpoint
 
                     if spread > 0 and last_price > 0:

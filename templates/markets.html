@@ -126,7 +126,7 @@
 
                     <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
                         <strong>Sub-calculations:</strong><br>
-                        Midpoint = (yes_bid + yes_ask) / 2<br>
+                        Midpoint = (yes_bid + yes_ask) / 2 &nbsp;(falls back to last_price if no yes bids)<br>
                         <br>
                         Liquidity = Midpoint + Shift<br>
                         &nbsp;&nbsp;where Shift = offset × 6 × spread_factor<br>
@@ -1581,7 +1581,11 @@ async function fetchKalshiData() {
             const last_price = m.last_price || 0;
             const yes_bid = m.yes_bid || 0;
             const yes_ask = m.yes_ask || 0;
-            const midpoint = (yes_bid + yes_ask) / 2;
+
+            // Only compute a real midpoint when both sides have orders.
+            // If yes_bid is 0 (no buy-side interest), midpoint between 0
+            // and the ask is meaningless — fall back to last_price.
+            const midpoint = (yes_bid > 0 && yes_ask > 0) ? (yes_bid + yes_ask) / 2 : last_price;
 
             // Extract order book volume data
             const yes_bid_volume = m.yes_bid_size || 0;
@@ -1592,7 +1596,8 @@ async function fetchKalshiData() {
                 const localMid = midpoint;
 
                 // Liquidity-weighted price based on last trade position within spread
-                const spread = yes_ask - yes_bid;
+                // Only use spread when both bid and ask exist
+                const spread = (yes_bid > 0 && yes_ask > 0) ? (yes_ask - yes_bid) : 0;
                 let kalshiLiquidity = localMid;
 
                 console.log(`${displayName} RAW DATA: yes_bid=${yes_bid}, yes_ask=${yes_ask}, last=${last_price}, spread=${spread.toFixed(2)}, mid=${localMid.toFixed(1)}`);
