@@ -595,7 +595,32 @@ def get_snapshots_chart():
                 for ri in rdp_indices:
                     kept_indices.add(index_map[ri])
 
-        # Build result from kept indices
+        # ===== ENSURE MINIMUM TIME DENSITY =====
+        # Add points to ensure at least one every 15 minutes (900 seconds)
+        kept_sorted = sorted(kept_indices)
+        MIN_INTERVAL = 900  # 15 minutes in seconds
+
+        additional_indices = set()
+        for i in range(len(kept_sorted) - 1):
+            idx1 = kept_sorted[i]
+            idx2 = kept_sorted[i + 1]
+            dt1 = parsed[idx1][0]
+            dt2 = parsed[idx2][0]
+            time_gap = (dt2 - dt1).total_seconds()
+
+            # If gap > 15 minutes, add intermediate points
+            if time_gap > MIN_INTERVAL:
+                num_needed = int(time_gap / MIN_INTERVAL)
+                for j in range(1, num_needed + 1):
+                    # Find index approximately j * (interval) seconds after dt1
+                    target_time = dt1 + timedelta(seconds=j * MIN_INTERVAL)
+                    # Find closest index to target_time between idx1 and idx2
+                    for k in range(idx1 + 1, idx2):
+                        if parsed[k][0] >= target_time:
+                            additional_indices.add(k)
+                            break
+
+        kept_indices.update(additional_indices)
         kept_sorted = sorted(kept_indices)
         result_snapshots = []
         for idx in kept_sorted:
