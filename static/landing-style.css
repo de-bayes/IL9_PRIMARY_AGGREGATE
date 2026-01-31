@@ -89,6 +89,7 @@ nav {
     display: flex;
     align-items: center;
     gap: 2rem;
+    margin-left: auto;
 }
 
 nav a {
@@ -107,19 +108,30 @@ nav a.github-link {
     color: #555555;
     text-decoration: none;
     font-size: 0.9rem;
-    transition: color 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease;
+    background: rgba(128, 128, 128, 0.15);
+    padding: 0.5rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    display: inline-block;
 }
 
 nav a.github-link:hover {
     color: #e67e22;
+    background: rgba(230, 126, 34, 0.1);
+    border-color: rgba(230, 126, 34, 0.4);
 }
 
 body.dark-mode nav a.github-link {
     color: #a0a0a0;
+    background: rgba(128, 128, 128, 0.2);
+    border-color: rgba(128, 128, 128, 0.4);
 }
 
 body.dark-mode nav a.github-link:hover {
     color: #e67e22;
+    background: rgba(230, 126, 34, 0.15);
+    border-color: rgba(230, 126, 34, 0.5);
 }
 
 /* HERO */
@@ -413,6 +425,11 @@ body.dark-mode .forecast-meta {
         font-size: 0.8rem;
     }
 
+    nav a.github-link {
+        padding: 0.4rem 0.7rem;
+        font-size: 0.8rem;
+    }
+
     .hero {
         margin: 1.5rem auto 1rem;
         padding: 1rem;
@@ -520,6 +537,11 @@ body.dark-mode .forecast-meta {
     }
 
     nav a {
+        font-size: 0.75rem;
+    }
+
+    nav a.github-link {
+        padding: 0.35rem 0.6rem;
         font-size: 0.75rem;
     }
 
