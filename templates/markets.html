@@ -37,10 +37,6 @@
         <section class="hero">
             <h1>Prediction Markets</h1>
             <p class="subtitle">Aggregated odds from multiple prediction markets</p>
-            <button id="shareButton" class="share-button">
-                <span class="share-icon">📤</span>
-                <span class="share-text">Share Current Standings</span>
-            </button>
         </section>
 
         <section class="markets-content-page">
@@ -101,6 +97,12 @@
                     prevented us from displaying it. The graph has data from Jan 30 and on.
                     All times displayed in Central Time (CT).
                 </p>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <button id="shareButton" class="share-button">
+                        <span class="share-icon">📤</span>
+                        <span class="share-text">Share Current Standings</span>
+                    </button>
+                </div>
             </section>
 
             <section class="weights-explainer methodology-section">
@@ -347,7 +349,6 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            margin-top: 1.5rem;
             padding: 0.75rem 1.5rem;
             background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
             color: white;
