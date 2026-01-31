@@ -537,13 +537,42 @@ def get_snapshots_chart():
         t_last = parsed[-1][0].timestamp()
         t_range = t_last - t_first if t_last != t_first else 1.0
 
-        # Collect all candidate names across all snapshots
+        # Detect real gaps (>2 hours) in the RAW data before any processing
+        GAP_THRESHOLD_SECS = 7200  # 2 hours
+        gaps = []
+        for i in range(1, len(parsed)):
+            gap_secs = (parsed[i][0] - parsed[i - 1][0]).total_seconds()
+            if gap_secs > GAP_THRESHOLD_SECS:
+                gaps.append({
+                    'start': parsed[i - 1][0].strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+                    'end': parsed[i][0].strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                })
+
+        # ===== EMA SMOOTHING PASS =====
+        # Apply exponential moving average per candidate to eliminate jitter.
+        # alpha controls responsiveness: lower = smoother (0.15 is very smooth)
+        EMA_ALPHA = 0.15
+
         all_candidates = set()
         for _, snap in parsed:
             for c in snap.get('candidates', []):
                 all_candidates.add(c['name'])
 
-        # Run RDP per candidate, collect union of kept indices
+        # Track EMA state per candidate
+        ema_state = {}  # candidate_name -> current smoothed value
+
+        for i, (dt, snap) in enumerate(parsed):
+            for c in snap.get('candidates', []):
+                name = c['name']
+                raw = c.get('probability', 0)
+                if name not in ema_state:
+                    ema_state[name] = raw  # First value: no smoothing
+                else:
+                    ema_state[name] = EMA_ALPHA * raw + (1 - EMA_ALPHA) * ema_state[name]
+                c['probability'] = round(ema_state[name], 1)
+
+        # ===== RDP SIMPLIFICATION =====
+        # Run RDP per candidate on the smoothed data
         kept_indices = set()
         kept_indices.add(0)
         kept_indices.add(len(parsed) - 1)
@@ -565,17 +594,6 @@ def get_snapshots_chart():
                 rdp_indices = rdp_simplify(points, epsilon)
                 for ri in rdp_indices:
                     kept_indices.add(index_map[ri])
-
-        # Detect real gaps (>1 hour) in the RAW data before RDP
-        GAP_THRESHOLD_SECS = 7200  # 2 hours
-        gaps = []
-        for i in range(1, len(parsed)):
-            gap_secs = (parsed[i][0] - parsed[i - 1][0]).total_seconds()
-            if gap_secs > GAP_THRESHOLD_SECS:
-                gaps.append({
-                    'start': parsed[i - 1][0].strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-                    'end': parsed[i][0].strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-                })
 
         # Build result from kept indices
         kept_sorted = sorted(kept_indices)
@@ -621,7 +639,7 @@ def download_snapshots():
 # Includes spike dampening to prevent chart artifacts
 
 # Maximum percentage-point change allowed per 3-minute interval per candidate
-MAX_CHANGE_PER_INTERVAL = 5.0
+MAX_CHANGE_PER_INTERVAL = 3.0
 
 # In-memory cache of last successful snapshot for spike dampening and API fallback
 _last_snapshot = None
