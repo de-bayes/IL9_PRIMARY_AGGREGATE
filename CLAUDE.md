@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**IL9Cast** - Illinois 9th District Democratic Primary Forecast aggregator for the March 17, 2026 primary. Aggregates prediction market data from Manifold Markets and Kalshi every minute using a weighted formula, stores historical snapshots, and serves an interactive web dashboard.
+**IL9Cast** - Illinois 9th District Democratic Primary Forecast aggregator for the March 17, 2026 primary. Aggregates prediction market data from Manifold Markets and Kalshi every **3 minutes** using a weighted formula, stores historical snapshots in JSONL format, applies multi-layer smoothing for clean charts, and serves an interactive web dashboard with Central Time display.
+
+**Fresh Start:** All historical data from before Jan 30, 2026 has been purged. The system rebuilds from zero starting Jan 30 onward.
 
 ## Development Commands
 
@@ -16,20 +18,20 @@ pip install -r requirements.txt
 # Run development server (with auto-reload)
 python app.py
 
-# Run production server locally
+# Run production server locally (matches Railway)
 gunicorn app:app --preload
 ```
 
 ### Data Management
 ```bash
-# Manually repair corrupted JSON data
-python repair_data.py
-
-# View recent snapshots
-tail -n 50 data/historical_snapshots.json
+# View recent snapshots (JSONL format)
+tail -n 50 data/historical_snapshots.jsonl
 
 # Check data file size
-ls -lh data/historical_snapshots.json
+ls -lh data/historical_snapshots.jsonl
+
+# Count total snapshots (without loading all into memory)
+wc -l data/historical_snapshots.jsonl
 ```
 
 ### Deployment
@@ -39,6 +41,9 @@ git push origin main
 
 # Manual Railway CLI deploy
 railway up
+
+# View Railway logs
+railway logs
 ```
 
 ## Architecture
@@ -46,84 +51,125 @@ railway up
 ### Application Structure
 
 **Backend:** Flask 2.3.2 + APScheduler for background data collection
-- `app.py` (611 lines) - Main Flask app with routes, API endpoints, and data collection scheduler
-- Background task runs every 60 seconds to fetch and aggregate market data
+- `app.py` (~950 lines) - Main Flask app with routes, API endpoints, data collection, smoothing pipelines
+- Background task runs every **3 minutes** (not 1 minute) to fetch and aggregate market data
 - Production: Gunicorn with `--preload` flag to ensure single scheduler instance
+- Includes spike dampening (±3% per interval), EMA smoothing, RDP simplification, gap detection
 
 **Frontend:** Server-side Jinja2 templates + Chart.js visualization
-- `templates/landing.html` - Homepage hero section
-- `templates/markets.html` - Live prediction market aggregation display
+- `templates/landing_new.html` - Homepage hero section
+- `templates/markets.html` - Live prediction market aggregation with Central Time display
+- `templates/methodology.html` - Technical documentation with animated foldouts (4 sections)
 - `templates/odds.html` - Model visualization page (in development)
-- `static/style.css` (2435 lines) - Complete styling with dark mode toggle
+- `templates/fundraising.html` - Fundraising data page (in development)
+- `templates/about.html` - About page
+- `static/style.css` (~2500 lines) - Complete styling with dark mode toggle
 
 ### Data Collection Pipeline
 
-**Every 60 seconds:**
+**Every 3 minutes:**
 1. Fetch from Manifold API (`/v0/slug/who-will-win-the-democratic-primary-RZdcps6dL9`)
 2. Fetch from Kalshi API (`/trade-api/v2/markets?series_ticker=KXIL9D&status=open`)
-3. Normalize candidate names across platforms
-4. Aggregate using weighted formula:
+3. Normalize candidate names across platforms (handle prefixes, suffixes, variations)
+4. **Aggregate using weighted formula:**
    - Manifold: 40%
    - Kalshi last price: 42%
-   - Kalshi midpoint (bid/ask): 12%
-   - Kalshi liquidity-adjusted: 6%
-5. Apply soft normalization (30% strength toward sum=100%)
-6. Create snapshot object with timestamp
-7. Atomically write to `data/historical_snapshots.json`
+   - Kalshi midpoint (bid/ask): 12% (falls back to `last_price` if `yes_bid = 0`)
+   - Kalshi liquidity-adjusted: 6% (falls back to `last_price` if `yes_bid = 0`)
+5. **Apply soft normalization** (30% strength toward sum=100%)
+6. **Spike dampen:** Cap per-candidate change to ±3% per interval (prevents thin-market artifacts)
+7. Create snapshot object with UTC timestamp (Z suffix)
+8. **Atomically append to JSONL** (temp file → rename pattern)
+
+**Important:** If both APIs fail, skip the snapshot entirely (no bad data saved).
+
+### Thin-Market Fallback (Critical Fix)
+
+When a candidate has **no yes-side bids** (`yes_bid = 0`), both **Midpoint** and **Liquidity-Weighted** price fall back to `last_price` instead of using the formula.
+
+**Why:** The midpoint formula `(0 + yes_ask) / 2` produces massively inflated values. Example: Mike Simmons with `yes_bid=0, yes_ask=19, last_price=1` would incorrectly show Midpoint=9.5% and Liquidity≈9% instead of the correct ~1%. Fixed in both backend (`app.py:718-736`) and frontend (`markets.html:1584-1596`).
 
 ### Data Storage
 
-**Critical:** All historical data stored in `/data/historical_snapshots.jsonl` (JSONL format)
+**Critical:** All historical data stored in `data/historical_snapshots.jsonl` (JSONL format)
 
 - **Format:** JSON Lines (one snapshot per line, newline-delimited)
-- **Current Size:** ~2.4MB, 5,565+ snapshots
+- **Structure per line:**
+  ```json
+  {"candidates": [{"name": "Daniel Biss", "probability": 63.6, "hasKalshi": true}], "timestamp": "2026-01-30T14:30:00Z"}
+  ```
 - **Location:** Railway persistent volume mounted at `/app/data`
+- **Growth rate:** ~1.4 MB/day at 480 snapshots/day (3-minute intervals)
 - **Git Tracking:** Runtime data excluded, `seed_snapshots.json` tracked for initialization
 
-**Why JSONL?**
-- Append-only writes (no need to read/rewrite entire file)
+**Why JSONL (not a database)?**
+- Append-only writes (temp file + atomic `os.replace()`, no read-rewrite)
 - Corruption-proof (each line is self-contained)
-- 35% space savings vs JSON array
-- Prevents "Extra data" errors from incomplete writes
+- Human-readable (can `tail` to inspect)
+- One unparseable line doesn't corrupt others
+- Vastly simpler than managing database connections
 
-**Snapshot Structure (one per line):**
-```json
-{"candidates": [{"name": "Daniel Biss", "probability": 63.6, "hasKalshi": true}, {"name": "Kat Abughazaleh", "probability": 18.8, "hasKalshi": true}], "timestamp": "2026-01-29T19:45:30Z"}
+**Atomic Write Pattern** (`app.py:68-107`):
+1. Write new snapshot to `historical_snapshots.jsonl.tmp`
+2. Read existing file content
+3. Write existing + new line to temp file
+4. `os.replace()` swaps temp into place (atomic at OS level)
+5. If crash occurs, either old or new file exists — never half-written
+
+**Data Purge on Startup** (`app.py:241-303`):
+- `purge_old_data()` runs once per Railway restart
+- Removes all snapshots before Jan 30, 2026
+- Deletes legacy `.json` and `.backup.*` files
+- Creates `.purge_pre_jan30_done` marker to avoid re-running
+
+### Chart Smoothing Pipeline
+
+**Multiple layers of smoothing** to prevent spiky/jerky charts:
+
+1. **Spike Dampening (data collection level):** Cap per-candidate change to ±3% per 3-minute interval (`app.py:662-682`)
+2. **Exponential Moving Average (server-side):** EMA(alpha=0.15) applied per candidate before RDP (`app.py:555-575`). Each data point = 15% raw + 85% previous smoothed. Kills jitter while preserving trends.
+3. **Ramer-Douglas-Peucker Simplification:** Recursively removes points closer than epsilon=0.5 from the trend line. Reduces ~3,360 raw points/week to ~200-400 visual points. (`app.py:156-182`)
+4. **Monotone Cubic Interpolation:** Frontend setting `cubicInterpolationMode: 'monotone'` prevents overshoot between points. No fake dips/peaks. (`templates/markets.html:1375`)
+5. **Tension 0.5:** Curviness parameter for smooth lines without over-smoothing. (`templates/markets.html:1376`)
+
+**RDP Algorithm Intuition:** Draw a line from first to last point. Find the intermediate point farthest from that line. If farther than epsilon, keep it and recurse on both halves. Otherwise, that segment is "flat enough" to skip intermediate points.
+
+### Central Time Display
+
+All timestamps displayed in **Central Time (CT)** using `Intl.DateTimeFormat` with timezone `America/Chicago`. Handles DST automatically.
+
+**Implementation:**
+```javascript
+function formatCentralTime(date, options = {}) {
+    const defaults = { timeZone: 'America/Chicago', hour12: true };
+    const formatter = new Intl.DateTimeFormat('en-US', { ...defaults, ...options });
+    return formatter.format(date) + ' CT';
+}
 ```
 
-**Legacy JSON Support:**
-- Old `historical_snapshots.json` automatically migrated to JSONL on first run
-- Backups preserved in `data/*.pre-jsonl-backup.*` files
+Applied to:
+- Manifold update timestamp (markets.html:1197-1201)
+- Chart tooltip titles (markets.html:1470-1474)
+- Kalshi update timestamp (markets.html:1654-1657)
+- X-axis tick labels (markets.html:1527-1537)
 
-### Data Reliability Features
+### API Endpoints
 
-**JSONL Append-Only Writes:**
-- `append_snapshot_jsonl()` atomically appends single line
-- No need to read entire file or risk corruption
-- Each line is self-contained and parseable independently
-- Automatic migration from legacy JSON format
-
-**Deduplication:**
-- Historical data cleaned of 175 millisecond-duplicate snapshots (Jan 2026)
-- Use `deduplicate_aggressive.py` to remove duplicates from JSONL files
-- Keeps first snapshot when multiple exist within 1 second
-
-**Helper Functions:**
-- `read_snapshots_jsonl()` - Load all snapshots from JSONL
-- `count_snapshots_jsonl()` - Count snapshots without loading all into memory
-- `append_snapshot_jsonl()` - Atomic append operation
-
-## API Endpoints
-
-### Public JSON APIs
+**Public JSON APIs**
 - `GET /api/manifold` - Proxy to Manifold market data
 - `GET /api/kalshi` - Proxy to Kalshi market data
-- `GET /api/snapshots` - Historical aggregated snapshots (full dataset)
-- `POST /api/snapshot` - Save new snapshot (internal use)
+- `GET /api/snapshots` - Full historical snapshot data (JSONL format)
+- `GET /api/snapshots/chart?period={1d|7d|all}&epsilon=0.5` - RDP-simplified chart data with gaps. Uses 60-second in-memory cache.
+- `POST /api/snapshot` - Save new snapshot (internal use by scraper)
+- `GET /api/download/snapshots` - Download all historical data as JSONL file
 
-### Mock Endpoints (Development)
-- `GET /api/forecast` - Hardcoded current probabilities with randomization
-- `GET /api/timeline` - Generated 90-day polling trends
+**Page Routes**
+- `GET /` - Landing page (landing_new.html)
+- `GET /markets` - Live markets aggregation (markets.html)
+- `GET /odds` - Model page (odds.html, in development)
+- `GET /fundraising` - Fundraising data (fundraising.html, in development)
+- `GET /methodology` - Technical methodology with 4 foldout sections (methodology.html)
+- `GET /about` - About page (about.html)
 
 ## Deployment Configuration
 
@@ -132,61 +178,202 @@ railway up
 - Start: `gunicorn app:app --preload`
 - Health check: `GET /` with 100s timeout
 - Persistent volume: `/app/data` for historical snapshots
-- Auto-restart: Up to 10 retries on failure
+- Auto-restart: ON_FAILURE, up to 10 retries
+- Environment: Python 3.x, port 8000 (or `$PORT`)
 
-**Environment:**
-- Port: 8000 (default) or `$PORT`
-- Debug: Auto-detected (disabled if `FLASK_ENV=production`)
+**Why `--preload` flag?**
+- Loads Flask app once in master process before workers fork
+- Ensures background scheduler thread only exists once
+- Without it: N workers = N duplicate data collection threads
+
+**Path Resolution** (`app.py:17-27`):
+Checks in order: `/data`, `/app/data`, then local `data/` directory. Works on Railway and locally without env vars.
 
 ## Important Technical Details
 
 ### Background Task Scheduling
 
-The scheduler runs in a dedicated daemon thread when using Gunicorn:
+**Local Development** uses APScheduler BackgroundScheduler (in-process background thread).
+
+**Production (Gunicorn)** uses plain `threading.Thread`:
 ```python
 if 'gunicorn' in sys.argv[0]:
-    # Start scheduler in background thread to avoid duplicate schedulers
+    # Start scheduler in background thread (--preload ensures only once)
 ```
 
-This prevents multiple worker processes from creating duplicate collection jobs.
+This prevents worker processes from each spawning their own scheduler.
 
-### Name Normalization
+### Data Collection Loop Steps
 
-Candidate name standardization critical for cross-platform aggregation:
-- Removes "Wil"/"Will" prefixes
-- Strips "Goczkowski" suffix variations
-- Handles "Kat"/"Katheryn" variations
-- Case-insensitive matching
+1. Fetch Manifold (10s timeout)
+2. Fetch Kalshi (10s timeout)
+3. Both APIs failed? Skip snapshot entirely (no bad data)
+4. Normalize candidate names
+5. Aggregate using weighted formula
+6. Soft normalize (30% strength)
+7. **Spike dampen** (compare to previous, cap ±3%)
+8. Atomically append to JSONL
+9. Update in-memory `_last_snapshot` cache (used by spike dampening)
 
-### Timezone Reset Migration
+### Name Normalization & Cleaning
 
-Markers in `data/.timezone_reset_v*` prevent repeated one-time data migrations. Do not delete these files.
+**Normalization** (`app.py:834-856`): Used for cross-platform matching
+- Remove "Wil"/"Will" prefixes
+- Remove "Dr." prefix
+- Remove suffixes like "be the democratic nominee", "for IL-9", "win"
+- Handle variations (e.g., "Kat Abughazaleh" ↔ "Katheryn Abughazaleh")
 
-## Common Issues
+**Cleaning** (`app.py:858-867`): Used for display
+- Remove prefixes/suffixes with case-insensitive matching
+- Keeps proper name casing
 
-### JSON Corruption Recovery
-If `historical_snapshots.json` becomes corrupted:
-1. Automatic repair runs on next collection cycle
-2. Manual repair: `python repair_data.py`
-3. Backup created automatically before repair
+### Chart Data Caching
 
-### Data Loss Prevention
-- Never delete `data/historical_snapshots.json` in production
-- Railway persistent volume ensures data survives container restarts
-- Seed file (`seed_snapshots.json`) only for initialization, not ongoing backup
+In-memory cache (`_chart_cache`) stores `{data, time, key}`:
+- Key = `{period}:{epsilon}` (e.g., `"7d:0.5"`)
+- 60-second TTL: if same request within 60 sec, serve cached version
+- Prevents re-running RDP on unchanged data
 
-### Double-Entry Prevention
-Fixed in recent commits. Historical data may contain duplicates that should be deduplicated by timestamp during analysis.
+### Failure Modes & Defenses
 
-## File Paths Reference
+| Issue | Defense |
+|-------|---------|
+| API timeout | 10-second timeout on both Manifold & Kalshi |
+| Only one API works | Proceed with available data; spike dampening prevents weight shift artifacts |
+| Railway restart | Persistent volume preserves all data |
+| Corrupt JSONL line | Reader skips unparseable lines; doesn't corrupt others |
+| Duplicate schedulers | `--preload` + `sys.argv` check ensures one scheduler thread |
+| Data gap > 2 hours | Detected and marked with dashed lines (real outage, not normal 3-min intervals) |
+| Thin-market prices | Fallback to `last_price` when `yes_bid = 0` |
 
-- Main app: `app.py`
-- Data collection: `app.py:collect_market_data()`
-- Name normalization: `app.py:normalize_candidate_name()`, `clean_candidate_name()`
-- JSONL operations: `app.py:read_snapshots_jsonl()`, `append_snapshot_jsonl()`, `count_snapshots_jsonl()`
-- Deduplication script: `deduplicate_aggressive.py`
-- Data analysis script: `data_recovery.py`
-- Conversion script: `convert_to_jsonl.py`
-- Historical data (current): `data/historical_snapshots.jsonl`
-- Historical data (legacy): `data/historical_snapshots.json` (auto-migrated to JSONL)
-- Seed/backup: `data/seed_snapshots.json`
+### Dependencies
+
+Only 5 production packages:
+```
+Flask==2.3.2         # Web framework
+Werkzeug==2.3.6      # WSGI utilities
+Requests==2.31.0     # HTTP client for APIs
+Gunicorn==21.2.0     # Production WSGI server
+APScheduler==3.10.4  # Background scheduling (dev mode)
+```
+
+No NumPy, Pandas, or heavyweight libraries. EMA, RDP, and aggregation are hand-written Python (~100 lines).
+
+## UI & Documentation
+
+### Methodology Page (4 Animated Foldouts)
+
+Each foldout uses CSS `grid-template-rows: 0fr → 1fr` animation with cubic-bezier easing:
+
+1. **Prediction Markets Aggregation** — Weights, formulas, thin-market fallback, Simmons example, chart smoothing explanation
+2. **Forecast Model** — Coming soon (links to `/odds`)
+3. **Fundraising Analysis** — Coming soon (links to `/fundraising`)
+4. **Infrastructure & Technical Stack** — Railway, persistent volumes, JSONL, schedulers, chart pipeline, frontend rendering, failure modes
+
+### Navigation Updates
+
+All templates now include "Fundraising" link:
+- landing_new.html
+- markets.html
+- odds.html
+- about.html
+- methodology.html
+- fundraising.html
+
+### Chart Footer Notes
+
+**Chart subtitle** mentions:
+- Jan 15–30 data available on request (AWS volume issues prevented display)
+- Dashed lines = Railway/AWS outages (>2 hour gaps)
+- All times in Central Time (CT)
+
+## File Structure
+
+### Key Files
+- `app.py` — Main Flask app with all logic
+  - `collect_market_data()` (line 684) — 3-minute scraper with spike dampening
+  - `append_snapshot_jsonl()` (line 68) — Atomic JSONL write
+  - `read_snapshots_jsonl()` (line 41) — Load all snapshots
+  - `purge_old_data()` (line 241) — One-time cleanup of pre-Jan-30 data
+  - `get_snapshots_chart()` (line 487) — EMA + RDP pipeline
+  - `rdp_simplify()` (line 156) — Ramer-Douglas-Peucker algorithm
+  - `_dampen_spikes()` (line 662) — Cap per-candidate change
+
+- `templates/methodology.html` — 4-section foldout UI with infrastructure docs
+- `templates/markets.html` — Markets page with Central Time formatting
+- `Procfile` — Railway start command
+- `railway.toml` — Railway config (volume mount, health check, restart policy)
+- `requirements.txt` — Python dependencies
+- `data/historical_snapshots.jsonl` — JSONL data (persisted on Railway volume)
+- `data/seed_snapshots.json` — Git-tracked seed (initialization only)
+
+### Markers (Do Not Delete)
+- `data/.purge_pre_jan30_done` — Prevents re-running data purge
+- `data/.timezone_reset_v*` — Prevents re-running timezone migrations
+
+## Common Tasks
+
+### Inspecting Data
+```bash
+# View last 20 snapshots
+tail -n 20 data/historical_snapshots.jsonl
+
+# Count total snapshots
+wc -l data/historical_snapshots.jsonl
+
+# Check specific timestamp
+grep "2026-01-30T15" data/historical_snapshots.jsonl
+
+# Pretty-print one line
+tail -1 data/historical_snapshots.jsonl | python3 -m json.tool
+```
+
+### Testing Locally
+```bash
+# Dev mode (Flask auto-reload)
+python app.py
+
+# Production mode (Gunicorn, matches Railway)
+gunicorn app:app --preload
+# Visit http://localhost:8000
+
+# Test data collection cycle
+python -c "from app import collect_market_data; collect_market_data()"
+```
+
+### Debugging Railway
+```bash
+# Stream live logs
+railway logs -f
+
+# SSH into container
+railway shell
+
+# Check persistent volume
+ls -lh /app/data/
+```
+
+## Git Workflow
+
+- Main branch: `main` (production)
+- Auto-deploy: Every push to `main` triggers Railway build
+- Atomic commits preferred (one feature/fix per commit)
+- All changes require CLAUDE.md updates if they affect:
+  - Data flow/API
+  - Configuration
+  - Methodology/formulas
+  - Infrastructure
+
+## Recent Major Changes (Jan 2026)
+
+1. **Fresh Start from Jan 30** — All pre-Jan-30 data purged on startup
+2. **3-Minute Intervals** — Changed from 1-minute to 3-minute collection (was over-sampling)
+3. **Spike Dampening** — Cap ±3% per interval per candidate (prevents thin-market artifacts)
+4. **Multi-Layer Smoothing** — EMA + RDP + monotone splines for smooth, trustworthy charts
+5. **Thin-Market Fallback** — Fallback to `last_price` when `yes_bid = 0` (fixes Simmons example)
+6. **Central Time Display** — All timestamps shown in CT via `Intl.DateTimeFormat`
+7. **2-Hour Gap Threshold** — Only major outages trigger dashed lines (was 1 hour)
+8. **Methodology Foldouts** — 4-section interactive documentation on `/methodology` page
+9. **Infrastructure Docs** — Deep-dive on Railway, JSONL, schedulers, chart pipeline
+10. **Fundraising Nav** — Added Fundraising link to all page navs
+
