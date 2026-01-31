@@ -17,7 +17,12 @@
     <div class="site-content">
         <header>
             <a href="/" class="logo">IL9<span>Cast</span></a>
-            <nav>
+            <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav id="mobileNav">
                 <a href="/">Home</a>
                 <a href="/markets" class="active">Markets</a>
                 <a href="/odds">Model</a>
@@ -242,6 +247,34 @@
                 </a>
             </section>
         </section>
+
+        <footer class="site-footer">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About</h4>
+                    <ul>
+                        <li><a href="/about">About IL9Cast</a></li>
+                        <li><a href="/methodology">Methodology</a></li>
+                        <li><a href="https://github.com/de-bayes/IL9" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Markets</h4>
+                    <ul>
+                        <li><a href="/markets">Live Markets</a></li>
+                        <li><a href="/markets">Download Data</a></li>
+                        <li>Updated every 3 minutes</li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Disclaimer</h4>
+                    <p>Prediction markets involve risk. Past performance does not guarantee future results. This platform aggregates public market data for informational purposes.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 IL9Cast. Built with open data.</p>
+            </div>
+        </footer>
     </div>
 
     <style>
@@ -252,6 +285,26 @@
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
             min-height: 100vh;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .leader-featured,
+        .big-odds-display,
+        .market-chart-section,
+        .additional-markets,
+        .status-section {
+            animation: fadeInUp 0.7s ease-out;
         }
 
         .markets-content-page {
@@ -1252,6 +1305,34 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script>
+// Mobile hamburger menu toggle
+function toggleMobileMenu() {
+    const hamburger = document.getElementById('hamburger');
+    const mobileNav = document.getElementById('mobileNav');
+    hamburger.classList.toggle('active');
+    mobileNav.classList.toggle('active');
+}
+
+// Close mobile menu when a link is clicked
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('#mobileNav a').forEach(link => {
+        link.addEventListener('click', () => {
+            document.getElementById('hamburger').classList.remove('active');
+            document.getElementById('mobileNav').classList.remove('active');
+        });
+    });
+
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', (e) => {
+        const hamburger = document.getElementById('hamburger');
+        const mobileNav = document.getElementById('mobileNav');
+        if (!hamburger.contains(e.target) && !mobileNav.contains(e.target)) {
+            hamburger.classList.remove('active');
+            mobileNav.classList.remove('active');
+        }
+    });
+});
+
 // Central Time formatter utility
 function formatCentralTime(date, options = {}) {
     const defaults = {

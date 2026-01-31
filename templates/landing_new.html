@@ -17,7 +17,12 @@
     <div class="site-content">
         <header>
             <a href="/" class="logo">IL9<span>Cast</span></a>
-            <nav>
+            <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav id="mobileNav">
                 <a href="/" class="active">Home</a>
                 <a href="/markets">Markets</a>
                 <a href="/odds">Model</a>
@@ -99,9 +104,91 @@
                 <a href="/markets" class="btn">View Live Markets</a>
             </div>
         </section>
+
+        <footer class="site-footer">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About</h4>
+                    <ul>
+                        <li><a href="/about">About IL9Cast</a></li>
+                        <li><a href="/methodology">Methodology</a></li>
+                        <li><a href="https://github.com/de-bayes/IL9" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Data</h4>
+                    <ul>
+                        <li><a href="/markets">Live Markets</a></li>
+                        <li><a href="/markets">Download Data</a></li>
+                        <li>Updated every 3 minutes</li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Disclaimer</h4>
+                    <p>Prediction markets involve risk. Past performance does not guarantee future results. This platform aggregates public market data for informational purposes.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 IL9Cast. Built with open data.</p>
+            </div>
+        </footer>
     </div>
 
     <script>
+        // Mobile hamburger menu toggle
+        function toggleMobileMenu() {
+            const hamburger = document.getElementById('hamburger');
+            const mobileNav = document.getElementById('mobileNav');
+            hamburger.classList.toggle('active');
+            mobileNav.classList.toggle('active');
+        }
+
+        // Close mobile menu when a link is clicked
+        document.querySelectorAll('#mobileNav a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('hamburger').classList.remove('active');
+                document.getElementById('mobileNav').classList.remove('active');
+            });
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const hamburger = document.getElementById('hamburger');
+            const mobileNav = document.getElementById('mobileNav');
+            if (!hamburger.contains(e.target) && !mobileNav.contains(e.target)) {
+                hamburger.classList.remove('active');
+                mobileNav.classList.remove('active');
+            }
+        });
+
+        // Counter animation for snapshot count
+        function animateCounter() {
+            const element = document.getElementById('snapshotCount');
+            if (!element) return;
+
+            const finalValue = 4000;
+            const duration = 1500;
+            const startTime = Date.now();
+
+            function update() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const current = Math.floor(progress * finalValue);
+                element.textContent = current.toLocaleString() + '+';
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                } else {
+                    element.textContent = '4,000+';
+                }
+            }
+
+            update();
+        }
+
+        // Run counter animation when page loads
+        window.addEventListener('load', animateCounter);
+
         // GRID BACKGROUND
         const canvas = document.getElementById('grid-canvas');
         const ctx = canvas.getContext('2d');
