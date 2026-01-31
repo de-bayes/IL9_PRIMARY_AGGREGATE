@@ -71,7 +71,7 @@ p {
 
 .nav-brand {
     font-family: var(--font-mono);
-    font-size: 1.2rem;
+    font-size: 1.75rem;
     font-weight: 700;
     letter-spacing: 0.1em;
     color: var(--accent-green);
@@ -2202,7 +2202,7 @@ p {
 
 @media (max-width: 480px) {
     .nav-brand {
-        font-size: 1rem;
+        font-size: 1.4rem;
     }
 
     .nav-links {

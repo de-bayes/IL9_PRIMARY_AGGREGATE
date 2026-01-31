@@ -68,7 +68,7 @@ header {
 
 .logo {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 2rem;
+    font-size: 2.75rem;
     font-weight: 600;
     letter-spacing: -0.02em;
     text-decoration: none;
@@ -414,7 +414,7 @@ body.dark-mode .forecast-meta {
     }
 
     .logo {
-        font-size: 1.5rem;
+        font-size: 2rem;
     }
 
     nav {
@@ -529,7 +529,7 @@ body.dark-mode .forecast-meta {
     }
 
     .logo {
-        font-size: 1.3rem;
+        font-size: 1.75rem;
     }
 
     nav {
