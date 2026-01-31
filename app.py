@@ -235,8 +235,81 @@ def initialize_data():
         except Exception as e:
             print(f"[{datetime.now().isoformat()}] Error seeding data: {e}")
 
+def purge_old_data():
+    """
+    One-time purge: remove all snapshots before Jan 30, 2026.
+    Clean start - old data from Jan 15-29 is discarded.
+    Marker file prevents re-running on every restart.
+    """
+    data_dir = os.path.dirname(HISTORICAL_DATA_PATH)
+    marker = os.path.join(data_dir, '.purge_pre_jan30_done')
+    if os.path.exists(marker):
+        return
+
+    if not os.path.exists(HISTORICAL_DATA_PATH):
+        # Nothing to purge, but mark as done
+        os.makedirs(data_dir, exist_ok=True)
+        with open(marker, 'w') as f:
+            f.write('done')
+        return
+
+    print(f"[{datetime.now().isoformat()}] Purging all data before Jan 30, 2026...")
+    cutoff = datetime(2026, 1, 30, 0, 0, 0, tzinfo=timezone.utc)
+    kept = []
+    total = 0
+
+    try:
+        with open(HISTORICAL_DATA_PATH, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                total += 1
+                try:
+                    snap = json.loads(line)
+                    dt = parse_snapshot_timestamp(snap.get('timestamp', ''))
+                    if dt and dt >= cutoff:
+                        kept.append(line)
+                except json.JSONDecodeError:
+                    continue
+
+        # Rewrite file with only kept snapshots
+        with open(HISTORICAL_DATA_PATH, 'w') as f:
+            for line in kept:
+                f.write(line + '\n')
+
+        print(f"[{datetime.now().isoformat()}] Purged {total - len(kept)} old snapshots, kept {len(kept)}")
+
+    except Exception as e:
+        print(f"[{datetime.now().isoformat()}] Error during purge: {e}")
+
+    # Also delete any legacy JSON files on Railway volume
+    for pattern_dir in ['/data', '/app/data', os.path.join(os.path.dirname(__file__), 'data')]:
+        for fname in ['historical_snapshots.json']:
+            fpath = os.path.join(pattern_dir, fname)
+            if os.path.exists(fpath):
+                try:
+                    os.remove(fpath)
+                    print(f"  Deleted legacy file: {fpath}")
+                except Exception:
+                    pass
+        # Delete backup files
+        if os.path.isdir(pattern_dir):
+            for fname in os.listdir(pattern_dir):
+                if '.backup.' in fname or '.pre-' in fname:
+                    fpath = os.path.join(pattern_dir, fname)
+                    try:
+                        os.remove(fpath)
+                        print(f"  Deleted backup file: {fpath}")
+                    except Exception:
+                        pass
+
+    with open(marker, 'w') as f:
+        f.write('done')
+
 # Initialize data on module load
 initialize_data()
+purge_old_data()
 
 # Mock candidate data
 CANDIDATES = [

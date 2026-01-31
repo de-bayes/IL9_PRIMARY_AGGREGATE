@@ -85,7 +85,7 @@
                     <canvas id="marketTrendChart"></canvas>
                 </div>
                 <p class="chart-subtitle">
-                    We have data upon request from Jan 15 to 30, but some AWS volume issues
+                    We have JSONL data upon request from Jan 15 to 30, but some AWS volume issues
                     prevented us from displaying it. The graph has data from Jan 30 and on.
                     All times displayed in Central Time (CT).
                 </p>
@@ -1368,7 +1368,7 @@ async function renderMarketTrendChart(candidates) {
             backgroundColor: 'transparent',
             borderWidth: 2.5,
             cubicInterpolationMode: 'monotone',
-            tension: 0.4,
+            tension: 0.5,
             fill: false,
             pointRadius: 0,
             pointHoverRadius: 5,
