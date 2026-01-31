@@ -195,6 +195,7 @@
         let mouseX = -1000, mouseY = -1000;
         let targetMouseX = -1000, targetMouseY = -1000;
         const gridSize = 40, influence = 280, maxDisplacement = 15, smoothing = 0.06;
+        const gridOffset = 120; // Shift grid down to clear header area
         let pointsState = null;
 
         function resizeCanvas() {
@@ -230,14 +231,14 @@
                 for (let row = 0; row <= rows; row++) {
                     pointsState[row] = [];
                     for (let col = 0; col <= cols; col++) {
-                        pointsState[row][col] = { x: col * gridSize, y: row * gridSize };
+                        pointsState[row][col] = { x: col * gridSize, y: row * gridSize + gridOffset };
                     }
                 }
             }
 
             for (let row = 0; row <= rows; row++) {
                 for (let col = 0; col <= cols; col++) {
-                    const baseX = col * gridSize, baseY = row * gridSize;
+                    const baseX = col * gridSize, baseY = row * gridSize + gridOffset;
                     let targetX = baseX, targetY = baseY;
                     const dx = baseX - mouseX, dy = baseY - mouseY;
                     const dist = Math.sqrt(dx * dx + dy * dy);
