@@ -37,6 +37,10 @@
         <section class="hero">
             <h1>Prediction Markets</h1>
             <p class="subtitle">Aggregated odds from multiple prediction markets</p>
+            <button id="shareButton" class="share-button">
+                <span class="share-icon">📤</span>
+                <span class="share-text">Share Current Standings</span>
+            </button>
         </section>
 
         <section class="markets-content-page">
@@ -336,6 +340,45 @@
             max-width: 900px;
             margin: 0 auto 4rem;
             padding: 0 2rem;
+        }
+
+        /* Share Button */
+        .share-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .share-button:hover {
+            background: linear-gradient(135deg, #d35400 0%, #c0392b 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4);
+        }
+
+        .share-button:active {
+            transform: translateY(0);
+        }
+
+        .share-icon {
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 480px) {
+            .share-button {
+                font-size: 0.85rem;
+                padding: 0.65rem 1.2rem;
+            }
         }
 
         /* Leader Featured Card */
@@ -1357,6 +1400,50 @@ document.addEventListener('DOMContentLoaded', () => {
             mobileNav.classList.remove('active');
         }
     });
+
+    // Share button functionality
+    const shareButton = document.getElementById('shareButton');
+    if (shareButton) {
+        shareButton.addEventListener('click', async () => {
+            const leaderName = document.getElementById('leaderName')?.textContent || 'Loading...';
+            const leaderProb = document.getElementById('leaderAggregate')?.textContent || '--';
+
+            const shareData = {
+                title: 'IL9Cast - Illinois 9th District Primary Forecast',
+                text: `${leaderName} leads at ${leaderProb} in the IL-9 Democratic Primary prediction markets`,
+                url: window.location.href
+            };
+
+            // Try native share (mobile)
+            if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+                try {
+                    await navigator.share(shareData);
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.error('Share failed:', err);
+                        fallbackCopyLink();
+                    }
+                }
+            } else {
+                // Fallback: copy link to clipboard (desktop)
+                fallbackCopyLink();
+            }
+        });
+    }
+
+    function fallbackCopyLink() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            const shareText = document.querySelector('.share-text');
+            const originalText = shareText.textContent;
+            shareText.textContent = 'Link Copied!';
+            setTimeout(() => {
+                shareText.textContent = originalText;
+            }, 2000);
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            alert('Share URL: ' + window.location.href);
+        });
+    }
 });
 
 // Central Time formatter utility
