@@ -511,6 +511,11 @@ body.dark-mode #mobileNav.active {
     }
 }
 
+/* Desktop nav display */
+#mobileNav {
+    display: flex !important;
+}
+
 /* RESPONSIVE */
 @media (max-width: 1024px) {
     .features-grid {
@@ -613,7 +618,15 @@ body.dark-mode #mobileNav.active {
 
     nav {
         gap: 0.75rem;
-        display: none;
+    }
+
+    nav a {
+        font-size: 0.8rem;
+    }
+
+    nav a.github-link {
+        padding: 0.4rem 0.7rem;
+        font-size: 0.8rem;
     }
 
     #mobileNav {
@@ -644,13 +657,8 @@ body.dark-mode #mobileNav.active {
         font-size: 0.8rem;
     }
 
-    nav a {
-        font-size: 0.8rem;
-    }
-
-    nav a.github-link {
-        padding: 0.4rem 0.7rem;
-        font-size: 0.8rem;
+    #mobileNav.active {
+        display: flex;
     }
 
     .hero {
