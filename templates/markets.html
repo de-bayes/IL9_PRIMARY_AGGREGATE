@@ -2278,8 +2278,9 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
             ctx.lineWidth = 1;
-            const cols = Math.ceil(canvas.width / gridSize) + 1;
-            const rows = Math.ceil(canvas.height / gridSize) + 1;
+            // Make grid huge (4x normal size) so it never stops
+            const cols = Math.ceil(canvas.width / gridSize) * 4;
+            const rows = Math.ceil(canvas.height / gridSize) * 4;
 
             if (!pointsState || pointsState.length !== rows + 1) {
                 pointsState = [];
@@ -2293,9 +2294,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             for (let row = 0; row <= rows; row++) {
                 for (let col = 0; col <= cols; col++) {
-                    // Base grid position offset by scroll amount
-                    const baseX = (col * gridSize) - (scrollOffset * 0.3);
-                    const baseY = (row * gridSize) + (scrollOffset * 0.3);
+                    // Base grid position offset by scroll amount (slower: 0.15 instead of 0.3)
+                    const baseX = (col * gridSize) - (scrollOffset * 0.15);
+                    const baseY = (row * gridSize) + (scrollOffset * 0.15);
 
                     pointsState[row][col].x = baseX;
                     pointsState[row][col].y = baseY;
