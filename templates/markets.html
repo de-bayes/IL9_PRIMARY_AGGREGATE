@@ -13,7 +13,6 @@
 </head>
 <body class="dark-mode">
     <canvas id="grid-canvas"></canvas>
-    <div id="header-overlay"></div>
 
     <div class="site-content">
         <header>
@@ -285,35 +284,6 @@
     </div>
 
     <style>
-        /* Header Overlay - Solid background on top of grid canvas */
-        #header-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 120px;
-            background: #1a1a1a;
-            z-index: 100;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        #header-overlay.hidden {
-            opacity: 0;
-        }
-
-        @media (max-width: 600px) {
-            #header-overlay {
-                height: 100px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            #header-overlay {
-                height: 90px;
-            }
-        }
-
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: #1a1a1a;
@@ -2377,13 +2347,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const gridSize = 40;
         let pointsState = null;
         let scrollOffset = 0;
-        let initialOffset = -window.innerHeight * 3 + 120; // Start grid way above viewport, shift down 120px
+        let initialOffset = -window.innerHeight * 3; // Start grid way above viewport
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             pointsState = null;
-            initialOffset = -window.innerHeight * 3 + 120; // Recalculate on resize
+            initialOffset = -window.innerHeight * 3; // Recalculate on resize
         }
 
         window.addEventListener('resize', resizeCanvas);
@@ -2392,16 +2362,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Scroll effect - grid moves down and left as you scroll
         window.addEventListener('scroll', () => {
             scrollOffset = window.scrollY;
-
-            // Hide header overlay when scrolling down
-            const headerOverlay = document.getElementById('header-overlay');
-            if (headerOverlay) {
-                if (scrollOffset > 150) {
-                    headerOverlay.classList.add('hidden');
-                } else {
-                    headerOverlay.classList.remove('hidden');
-                }
-            }
         });
 
         function drawGrid() {

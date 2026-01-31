@@ -13,7 +13,6 @@
 </head>
 <body class="dark-mode">
     <canvas id="grid-canvas"></canvas>
-    <div id="header-overlay"></div>
 
     <div class="site-content">
         <header>
@@ -330,25 +329,12 @@
             const icon = document.getElementById('fundraisingMethodologyToggle');
             content.classList.toggle('hidden');
             icon.textContent = content.classList.contains('hidden') ? '▼' : '▲';
-        }        // Hide header overlay when scrolling down
-        window.addEventListener('scroll', () => {
-            const currentScroll = window.scrollY;
-            const headerOverlay = document.getElementById('header-overlay');
-
-            if (currentScroll > 150) {
-                headerOverlay.classList.add('hidden');
-            } else {
-                headerOverlay.classList.remove('hidden');
-            }
-        });
-
-
+        }
 
         // GRID BACKGROUND - Static, no mouse interaction
         const canvas = document.getElementById('grid-canvas');
         const ctx = canvas.getContext('2d');
         const gridSize = 40;
-        const gridOffset = 120; // Shift grid down to clear header area
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -366,7 +352,7 @@
             ctx.lineWidth = 1;
 
             // Draw horizontal lines
-            for (let y = gridOffset; y < canvas.height; y += gridSize) {
+            for (let y = 0; y < canvas.height; y += gridSize) {
                 ctx.beginPath();
                 ctx.moveTo(0, y);
                 ctx.lineTo(canvas.width, y);
@@ -376,7 +362,7 @@
             // Draw vertical lines
             for (let x = 0; x < canvas.width; x += gridSize) {
                 ctx.beginPath();
-                ctx.moveTo(x, gridOffset);
+                ctx.moveTo(x, 0);
                 ctx.lineTo(x, canvas.height);
                 ctx.stroke();
             }

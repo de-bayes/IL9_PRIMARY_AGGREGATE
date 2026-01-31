@@ -20,39 +20,6 @@ body.dark-mode {
     color: #e0e0e0;
 }
 
-/* Header Overlay - Solid background on top of grid canvas */
-#header-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 120px;
-    background: #1a1a1a;
-    z-index: 100;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-
-#header-overlay.hidden {
-    opacity: 0;
-}
-
-body:not(.dark-mode) #header-overlay {
-    background: #ffffff;
-}
-
-@media (max-width: 600px) {
-    #header-overlay {
-        height: 100px;
-    }
-}
-
-@media (max-width: 480px) {
-    #header-overlay {
-        height: 90px;
-    }
-}
-
 body.dark-mode .logo {
     color: #e0e0e0;
 }
@@ -86,31 +53,38 @@ body.dark-mode nav a.active {
 
 .site-content {
     position: relative;
-    z-index: 101;
-    padding: 0 1.5rem;
+    z-index: 1;
 }
 
 /* HEADER */
 header {
-    position: relative;
-    z-index: 101;
-    padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    background: #ffffff;
+    padding: 1.25rem 2rem;
+    max-width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.dark-mode header {
+    background: #1a1a1a;
+    border-bottom-color: rgba(255, 255, 255, 0.06);
 }
 
 .logo {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 2.75rem;
+    font-size: 2.5rem;
     font-weight: 600;
     letter-spacing: -0.02em;
     text-decoration: none;
     color: inherit;
     cursor: pointer;
     transition: opacity 0.2s ease;
+    flex-shrink: 0;
 }
 
 .logo:hover {
@@ -172,10 +146,8 @@ body.dark-mode nav a.github-link:hover {
 
 /* HERO */
 .hero {
-    position: relative;
-    z-index: 101;
     max-width: 900px;
-    margin: 2rem auto 1.5rem;
+    margin: 3rem auto 2rem;
     padding: 1rem 2rem;
     text-align: center;
 }
@@ -319,6 +291,7 @@ body.dark-mode .feature-item p {
 .forecast-card {
     background: #ffffff;
     border: 2px solid #e5e5e5;
+    border-radius: 12px;
     padding: 1.5rem;
     transition: all 0.3s ease;
     cursor: pointer;
@@ -384,6 +357,7 @@ body.dark-mode .forecast-meta {
     border: 2px solid #e67e22;
     background: #e67e22;
     color: #ffffff;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
     text-decoration: none;
@@ -516,7 +490,10 @@ body.dark-mode .hamburger span {
 }
 
 #mobileNav {
-    display: none;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-left: auto;
 }
 
 #mobileNav.active {
@@ -547,11 +524,6 @@ body.dark-mode #mobileNav.active {
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-/* Desktop nav display */
-#mobileNav {
-    display: flex !important;
 }
 
 /* RESPONSIVE */
@@ -592,19 +564,6 @@ body.dark-mode #mobileNav.active {
         padding: 1rem 0.5rem;
     }
 
-    header {
-        flex-direction: column;
-        gap: 1rem;
-        padding: 1.5rem;
-    }
-
-    nav {
-        gap: 1rem;
-        width: 100%;
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-
     .features-callout {
         padding: 2rem 1.5rem;
     }
@@ -643,7 +602,7 @@ body.dark-mode #mobileNav.active {
 
 @media (max-width: 600px) {
     header {
-        padding: 1rem;
+        padding: 1rem 1.25rem;
     }
 
     .logo {
@@ -652,19 +611,6 @@ body.dark-mode #mobileNav.active {
 
     .hamburger {
         display: flex;
-    }
-
-    nav {
-        gap: 0.75rem;
-    }
-
-    nav a {
-        font-size: 0.8rem;
-    }
-
-    nav a.github-link {
-        padding: 0.4rem 0.7rem;
-        font-size: 0.8rem;
     }
 
     #mobileNav {
@@ -700,8 +646,8 @@ body.dark-mode #mobileNav.active {
     }
 
     .hero {
-        margin: 1.5rem auto 1rem;
-        padding: 1rem;
+        margin: 2rem auto 1rem;
+        padding: 1rem 1.25rem;
     }
 
     .hero h1 {
@@ -715,7 +661,7 @@ body.dark-mode #mobileNav.active {
 
     .features-section {
         margin: 2rem auto 1.5rem;
-        padding: 0 1rem;
+        padding: 0 1.25rem;
     }
 
     .features-callout {
@@ -752,7 +698,7 @@ body.dark-mode #mobileNav.active {
 
     .featured-forecasts {
         margin: 1rem auto 1.5rem;
-        padding: 0 1rem 1rem;
+        padding: 0 1.25rem 1rem;
     }
 
     .section-title {
@@ -794,29 +740,16 @@ body.dark-mode #mobileNav.active {
 
 @media (max-width: 480px) {
     header {
-        padding: 0.75rem;
+        padding: 0.75rem 1rem;
     }
 
     .logo {
         font-size: 1.75rem;
     }
 
-    nav {
-        gap: 0.5rem;
-    }
-
-    nav a {
-        font-size: 0.75rem;
-    }
-
-    nav a.github-link {
-        padding: 0.35rem 0.6rem;
-        font-size: 0.75rem;
-    }
-
     .hero {
-        margin: 1rem auto 0.75rem;
-        padding: 0.75rem;
+        margin: 1.5rem auto 0.75rem;
+        padding: 0.75rem 1rem;
     }
 
     .hero h1 {
@@ -830,7 +763,7 @@ body.dark-mode #mobileNav.active {
 
     .features-section {
         margin: 1.5rem auto 1rem;
-        padding: 0 0.75rem;
+        padding: 0 1rem;
     }
 
     .features-callout {
@@ -861,7 +794,7 @@ body.dark-mode #mobileNav.active {
 
     .featured-forecasts {
         margin: 1rem auto 1.25rem;
-        padding: 0 0.75rem 0.75rem;
+        padding: 0 1rem 0.75rem;
     }
 
     .section-title {
